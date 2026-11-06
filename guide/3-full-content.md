@@ -36,7 +36,7 @@ How the box looks and where it goes is up to your CMS. Tribune Desk only says wh
 
 ## The AI label
 
-Under the EU AI Act (art. 50(2)) text produced with AI must be marked in a machine-readable way. `ai_provenance` is that mark and the source of truth: `claims` (what is stated: `article_id`, `generated_at`, `content_sha256`, `generator`, `models`, `digital_source_type`) and `jws`, the claims signed as a compact JWS. It is `null` when the newsroom turned marking off.
+Under the EU AI Act (art. 50(2)) text produced with AI must be marked in a machine-readable way. `ai_provenance` is that mark and the source of truth: `claims` (what is stated: `article_id`, `generated_at`, `content_sha256`, `generator`, `v` (the version of this claims format), `models`, `digital_source_type`) and `jws`, the claims signed as a compact JWS. It is `null` when the newsroom turned marking off.
 
 Show it in the `<head>` of the public page as JSON-LD, for example:
 
@@ -53,7 +53,7 @@ The end of `html` carries the same statement as a `<script type="application/ld+
 Anyone can check the mark without a token, at `https://api.tribunedesk.com`:
 
 - `GET /.well-known/hf-provenance.json` returns the public key (a JWK Set) to verify `jws`, and who the producer is;
-- `POST /v2/verify` with `{"text": "..."}` answers whether the text came from Tribune Desk (`generated`) and the date it first did (`generated_at`). It never says which organization produced it.
+- `POST /v2/verify` with `{"text": "..."}` answers whether the text came from Tribune Desk (`generated`) and the date it first did (`generated_at`). It never says which organization produced it. Send the article body: `html` as delivered or its plain text, without the headline (`title` is not part of `html`). Before the check Tribune Desk drops tags and `<script>` blocks, lowercases the text and collapses whitespace, so markup and the provenance block make no difference, but any change to the words does: an edited article answers `generated: false`. The route allows 30 requests per minute from one IP address and answers `429` above that; `503` means the registry is unavailable for a moment, so try again later.
 
 ## Done when
 
