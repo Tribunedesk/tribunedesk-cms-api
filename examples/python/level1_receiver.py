@@ -127,6 +127,19 @@ def handle_delivery(
     }
 
 
+def content_length(value: str | None) -> int:
+    """Return the body length from a `Content-Length` header, or raise `ValueError`.
+
+    Only ASCII digits are accepted: `int()` alone would also take signs, spaces and digits of
+    other scripts, and an unhandled error would drop the connection instead of answering 400.
+    """
+    if value is None:
+        return 0
+    if not (value.isascii() and value.isdigit()):
+        raise ValueError("invalid Content-Length")
+    return int(value)
+
+
 def main() -> None:
     secret = os.environ["TD_WEBHOOK_SECRET"]
     check_secret(secret)  # fail at startup, not on every delivery
@@ -135,8 +148,8 @@ def main() -> None:
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self) -> None:
-            body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
             try:
+                body = self.rfile.read(content_length(self.headers.get("Content-Length")))
                 answer = handle_delivery(body, dict(self.headers), secret=secret, store=store)
             except InvalidSignature:
                 self._reply(401, {"error": "invalid signature"})

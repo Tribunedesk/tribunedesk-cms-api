@@ -2,6 +2,8 @@
 
 This API connects a content management system (CMS) with Tribune Desk, a newsroom tool that writes articles. Your CMS receives the articles editors send, tells Tribune Desk where they were published, and can keep its media library in sync. Any CMS can be a client; nothing here assumes a particular product. The Tribune Desk plugin for WordPress is one implementation of it; you do not need it to build your own.
 
+The guide, the examples and the OpenAPI document live in the public repository [tribunedesk/tribunedesk-cms-api](https://github.com/tribunedesk/tribunedesk-cms-api). A Polish version is in its [`pl`](https://github.com/tribunedesk/tribunedesk-cms-api/tree/main/pl) folder.
+
 For media, the API lets the CMS keep the metadata of its media files (title, alt text, caption, description) in sync with Tribune Desk, in both directions. The CMS is the client: it asks Tribune Desk for changes and sends its own. Tribune Desk never calls your API (the one call it makes is the [article delivery webhook](guide/1-article-delivery.md#article-delivery-webhook)), but it does fetch the file URLs you send, so they must be publicly fetchable (no login, no IP restriction).
 
 ## Integration levels

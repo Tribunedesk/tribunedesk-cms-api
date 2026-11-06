@@ -3079,7 +3079,7 @@
     },
     "/v3/cms/articles/{article_id}/result": {
       "post": {
-        "description": "Read mode: the body your webhook would answer with (`ArticleDeliveryResult`). Tribune Desk stores `cms_post_id`, `edit_url` and `permalink` and marks the send as delivered. Unlike a webhook answer, this request is validated: a field of the wrong type gives `422 validation_error`; an `edit_url` that is not `http(s)` is ignored. Repeating the result is safe. `404 not_found`: no such article in the organization.",
+        "description": "Read mode: the body your webhook would answer with (`ArticleDeliveryResult`). Tribune Desk stores `cms_post_id`, `edit_url` and `permalink` and marks the send as delivered. Unlike a webhook answer, this request is validated: a field of the wrong type gives `422 validation_error`; an `edit_url` that is not `http(s)` is ignored. Repeating the result is safe. `404 not_found`: no such article in the organization. `409 conflict`: the article was never sent to the CMS; nothing is stored.",
         "operationId": "reportArticleResult",
         "parameters": [
           {

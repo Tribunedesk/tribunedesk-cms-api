@@ -21,7 +21,7 @@ When your CMS cannot receive requests from the internet, a super admin switches 
 
 1. Poll `GET /v3/cms/changes` with a token that has `articles:read`. A sent article appears as a change of kind `article_sent` with its `article_id`. A token sees only the kinds of its scopes: `article_sent` needs `articles:read`, every other kind `media:read`; the cursor still moves past the kinds you do not see. Read mode needs the integration enabled by a super admin.
 2. Fetch the article with `GET /v3/cms/articles/{article_id}`. The body is the same `ArticleDelivery` the webhook carries, built from the current state of the article. An article that was never sent gives `404`.
-3. Create or update the post, then report the outcome with `POST /v3/cms/articles/{article_id}/result` and a token with `articles:write`. The body is the same `ArticleDeliveryResult` your webhook would answer with. Unlike a webhook answer it is validated: a field of the wrong type gives `422`. Repeating the result is safe; the editor sees the send as delivered.
+3. Create or update the post, then report the outcome with `POST /v3/cms/articles/{article_id}/result` and a token with `articles:write`. The body is the same `ArticleDeliveryResult` your webhook would answer with. Unlike a webhook answer it is validated: a field of the wrong type gives `422`. An article that was never sent gives `409` and nothing is stored. Repeating the result is safe; the editor sees the send as delivered.
 
 ## Verifying the signature
 
@@ -75,13 +75,13 @@ Fields marked as omitted are absent from the body, not `null`, when they do not 
 
 ## Fields of your answer
 
-The body of your answer (`ArticleDeliveryResult`) is optional: a `2xx` alone means delivered. Send it as `application/json`, up to 64 KB. Tribune Desk reads each field on its own and ignores one that does not match its type.
+The body of your answer (`ArticleDeliveryResult`) is optional: a `2xx` alone means delivered. Send it as `application/json`, up to 64 KB. Tribune Desk reads each field on its own and ignores one that does not match its type. A field you leave out keeps the value Tribune Desk stored before: an answer with only `edit_url` does not erase the `cms_post_id` from an earlier answer.
 
 | Field | Level | Meaning |
 |---|---|---|
 | `cms_post_id` | 1 | Your identifier of the post, as text. Tribune Desk stores it with the article. |
 | `status` | 1 | `created`, `updated`, or `skipped_already_published` when you left an already published post alone. Informational: Tribune Desk does not act on it today. |
-| `edit_url` | 1 | An `http(s)` address where the editor edits the post; shown as "Edit in CMS". Other schemes are ignored. |
+| `edit_url` | 1 | An `http(s)` address where the editor edits the post; shown as "Edit in CMS". Other schemes are ignored. The delivery is a server-to-server call with no editor logged in, so build the address without checking the current user's permissions: a CMS helper that returns the edit link for the current user (in WordPress `get_edit_post_link()`) returns nothing there. |
 | `permalink` | 2 | The public address of the post. Tribune Desk uses it to link to this article from other articles. |
 | `featured_image` | 4 | The attachment made from the featured image, so Tribune Desk can reuse it next time. |
 | `post_id` | – | Deprecated: the same as `cms_post_id`, read only when that is absent. |
