@@ -53,7 +53,7 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 ```
 
 ```
-{"org_code":"example-org","contract_version":"3.2.0-draft","scopes":["media:read"],"state":"active", ...}
+{"org_code":"example-org","contract_version":"3.3.0-draft","scopes":["media:read"],"state":"active", ...}
 ```
 
 ## Routes and the scope each needs

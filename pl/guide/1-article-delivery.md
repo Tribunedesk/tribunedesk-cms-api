@@ -1,4 +1,4 @@
-<!-- translated-from: guide/1-article-delivery.md sha256:2f63cd5d224e4c4f -->
+<!-- translated-from: guide/1-article-delivery.md sha256:c6e9f504394195b4 -->
 # Poziom 1 – Dostawa artykułu
 
 ## Webhook dostawy artykułu
@@ -7,8 +7,7 @@ To jedyne wywołanie, które Tribune Desk kieruje do ciebie: gdy redaktor klikni
 
 **Żądanie.** `POST` z treścią JSON (`ArticleDelivery`) i tymi nagłówkami:
 
-- `webhook-id`, `webhook-timestamp`, `webhook-signature`: podpis żądania (zob. [Weryfikacja podpisu](#weryfikacja-podpisu)), wysyłany, gdy twoja organizacja ma sekret podpisu. Sprawdź go i odpowiedz `401`, gdy weryfikacja się nie powiedzie.
-- `X-Webhook-Secret`: przestarzały (wycofywany). Współdzielony sekret, wysyłany tylko wtedy, gdy twoja organizacja ma ustawiony sekret; nadal jest wysyłany obok podpisu, dopóki każda integracja nie przejdzie na podpis. Korzystaj z podpisu.
+- `webhook-id`, `webhook-timestamp`, `webhook-signature`: podpis żądania (zob. [Weryfikacja podpisu](#weryfikacja-podpisu)), wysyłany, gdy twoja organizacja ma sekret podpisu. Sprawdź go i odpowiedz `401`, gdy weryfikacja się nie powiedzie. Podpis to jedyny dowód, że żądanie pochodzi od Tribune Desk, więc poproś o sekret podpisu przed uruchomieniem integracji.
 - `X-Delivery-Id`: taki sam dla każdej próby jednej wysyłki, więc możesz odrzucać duplikaty. Równy `webhook-id`.
 - `X-Delivery-Attempt`: numer próby, liczony od 1.
 

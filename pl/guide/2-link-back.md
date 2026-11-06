@@ -1,11 +1,15 @@
-<!-- translated-from: guide/2-link-back.md sha256:0203e9bf47733463 -->
+<!-- translated-from: guide/2-link-back.md sha256:9441a06ad8a2a54a -->
 # Poziom 2 – Link zwrotny
 
 ## Zgłaszanie opublikowanego adresu
 
-Gdy wpis utworzony z dostarczonego artykułu staje się publiczny, wywołaj `POST /v3/cms/articles/published` tokenem z zakresem `articles:write`. Wyślij `items`, od 1 do 100 na żądanie, każdy z `article_id` (z dostawy), `url` (publiczny adres `http(s)`) i opcjonalnie `published_at` (ISO 8601 ze strefą czasową). Odpowiedź zawiera jeden wynik na każdy element, w tej samej kolejności: `ok`, `not_found` (nie ma takiego artykułu), `forbidden` (artykuł należy do innej organizacji niż token) lub `invalid_url`. Błędny element nie powoduje niepowodzenia pozostałych. Trasa dzieli limit żądań tokenu (600 żądań na minutę). Starsza trasa `POST /v2/cms/published-urls`, uwierzytelniana sekretem webhooka, jest przestarzała (wycofywana) i działa, dopóki każda integracja nie przejdzie na nową.
+Gdy wpis utworzony z dostarczonego artykułu staje się publiczny, wywołaj `POST /v3/cms/articles/published` tokenem z zakresem `articles:write`. Wyślij `items`, od 1 do 100 na żądanie, każdy z `article_id` (z dostawy), `url` (publiczny adres `http(s)`) i opcjonalnie `published_at` (ISO 8601 ze strefą czasową). Odpowiedź zawiera jeden wynik na każdy element, w tej samej kolejności: `ok`, `not_found` (nie ma takiego artykułu), `forbidden` (artykuł należy do innej organizacji niż token) lub `invalid_url`. Błędny element nie powoduje niepowodzenia pozostałych. Trasa dzieli limit żądań tokenu (600 żądań na minutę).
 
 Odpowiedź na dostawę z `permalink` robi to samo dla wpisu opublikowanego od razu; tej trasy używaj dla wpisów publikowanych później.
+
+## Wpis nie na Facebooka
+
+Jeśli Twój CMS ma ustawienie, które nie pozwala wpisowi trafić na Facebooka, wysyłaj je w każdym elemencie jako `social_queue_exclude`. Przy `true` Tribune Desk nie dodaje artykułu do swojej kolejki na Facebooka, a artykuł, który już w niej czeka, zostaje zdjęty ze wszystkich kolejek; opublikowane już posty zostają. Przy `false` wpis może znów trafić na Facebooka: artykuł, który nigdy nie trafił do kolejki i został opublikowany najwyżej 48 godzin temu, wchodzi do niej jak nowy, a każdy inny tylko wtedy, gdy doda go redaktor. Redaktor nadal może ręcznie dodać wykluczony artykuł. Pominięcie pola zachowuje zapisaną wartość, więc klient, który tego pola nie zna, nigdy go nie kasuje. Gdy Twój CMS ma takie ustawienie, wysyłaj pole za każdym razem, także jako `false`; inaczej zdjęcie ustawienia nigdy nie dotrze do Tribune Desk. Gdy ustawienie zmieni się w opublikowanym wpisie, wyślij element ponownie; ten sam adres nie zmienia niczego innego.
 
 Działający klient w Pythonie znajdziesz w [`examples/python/level2_link_back.py`](../../examples/python/level2_link_back.py).
 
