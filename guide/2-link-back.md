@@ -2,9 +2,13 @@
 
 ## Reporting the published address
 
-When a post made from a delivered article goes public, call `POST /v3/cms/articles/published` with a token that has `articles:write`. Send `items`, 1 to 100 per request, each with `article_id` (from the delivery), `url` (the public `http(s)` address) and, optionally, `published_at` (ISO 8601 with a time zone). The answer has one result per item, in order: `ok`, `not_found` (no such article), `forbidden` (the article belongs to another organization than the token) or `invalid_url`. A bad item does not fail the others. The route shares the limit of the token (600 requests per minute). The older `POST /v2/cms/published-urls`, authenticated with the webhook secret, is deprecated and keeps working until every integration has moved.
+When a post made from a delivered article goes public, call `POST /v3/cms/articles/published` with a token that has `articles:write`. Send `items`, 1 to 100 per request, each with `article_id` (from the delivery), `url` (the public `http(s)` address) and, optionally, `published_at` (ISO 8601 with a time zone). The answer has one result per item, in order: `ok`, `not_found` (no such article), `forbidden` (the article belongs to another organization than the token) or `invalid_url`. A bad item does not fail the others. The route shares the limit of the token (600 requests per minute).
 
 Answering a delivery with `permalink` does the same for a post published at once; use this route for posts published later.
+
+## Keeping a post off Facebook
+
+If your CMS has a setting that keeps a post off Facebook, send it in each item as `social_queue_exclude`. With `true`, Tribune Desk does not add the article to its Facebook queue, and an article already waiting there is taken off every queue; posts already published stay. With `false`, the post may go to Facebook again: an article that never reached the queue and was published at most 48 hours ago joins it as a new article, anything else only when an editor adds it. An editor can still add an excluded article by hand. Leaving the field out keeps the stored value, so a client that does not know the field never clears it. Once your CMS has the setting, send the field every time, also as `false`; otherwise clearing the setting never reaches Tribune Desk. Send the item again when the setting changes on a published post; the same address changes nothing else.
 
 A working client in Python is in [`examples/python/level2_link_back.py`](../examples/python/level2_link_back.py).
 

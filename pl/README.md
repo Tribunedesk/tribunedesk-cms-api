@@ -1,4 +1,4 @@
-<!-- translated-from: README.md sha256:1fae41a788b6959a -->
+<!-- translated-from: README.md sha256:b965dabb177c6352 -->
 # Tribune Desk CMS API: przewodnik integracji
 
 To API łączy system zarządzania treścią (CMS) z Tribune Desk, narzędziem redakcyjnym, które pisze artykuły. Twój CMS odbiera artykuły wysłane przez redaktorów, informuje Tribune Desk, gdzie zostały opublikowane, i może utrzymywać swoją bibliotekę mediów w synchronizacji. Klientem może być dowolny CMS; nic tutaj nie zakłada konkretnego produktu. Wtyczka Tribune Desk dla WordPress jest jedną z jego implementacji; nie potrzebujesz jej, żeby zbudować własną.
@@ -54,7 +54,7 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 ```
 
 ```
-{"org_code":"example-org","contract_version":"3.2.0-draft","scopes":["media:read"],"state":"active", ...}
+{"org_code":"example-org","contract_version":"3.3.0-draft","scopes":["media:read"],"state":"active", ...}
 ```
 
 ## Trasy i wymagane zakresy

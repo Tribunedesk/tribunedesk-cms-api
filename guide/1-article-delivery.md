@@ -6,8 +6,7 @@ This is the one call Tribune Desk makes to you: when an editor clicks “Send to
 
 **The request.** A `POST` with a JSON body (`ArticleDelivery`) and these headers:
 
-- `webhook-id`, `webhook-timestamp`, `webhook-signature`: the signature of the request (see [Verifying the signature](#verifying-the-signature)), sent when your organization has a signing secret. Check it and answer `401` when it does not verify.
-- `X-Webhook-Secret`: deprecated. The shared secret, sent only when your organization has a secret set; it is still sent next to the signature until every integration has moved to the signature. Prefer the signature.
+- `webhook-id`, `webhook-timestamp`, `webhook-signature`: the signature of the request (see [Verifying the signature](#verifying-the-signature)), sent when your organization has a signing secret. Check it and answer `401` when it does not verify. The signature is the only proof that a request comes from Tribune Desk, so ask for a signing secret before you go live.
 - `X-Delivery-Id`: the same for every attempt of one send, so you can drop duplicates. Equal to `webhook-id`.
 - `X-Delivery-Attempt`: the attempt number, starting at 1.
 
