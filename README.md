@@ -22,7 +22,7 @@ The contract is described by the [OpenAPI document](openapi.json) (also served a
 
 ## What works today
 
-- **Working now:** `GET /v3/cms/status` and `GET /v3/cms/changes` (need `media:read` or `articles:read`), `GET /v3/cms/held` (needs `media:read`), `GET /v3/cms/articles/{article_id}` (needs `articles:read`), `POST /v3/cms/articles/{article_id}/result` and `POST /v3/cms/articles/published` (need `articles:write`),`POST /v3/cms/media`, `POST /v3/cms/media/fields`, `POST /v3/cms/media/{asset_id}/link`, `POST /v3/cms/media/push-existing`, `POST /v3/cms/media/deletions`, `POST /v3/cms/resync` and `POST /v3/cms/held/{held_id}/decision` (need `media:write`), `GET /v3/cms/settings` and `PUT /v3/cms/settings` (need `settings:read` and `settings:write`), `GET /v3/cms/backfill/requests` and `POST /v3/cms/backfill/requests/{request_id}/pages` (need `backfill:write`) and `GET /v3/cms/openapi.json` (no token). A super admin enables the integration for your organization; the first poll does not enable it, but it does switch your organization to this API (see Switching to this API). Until then `state` in `/status` is `disabled` and `GET /changes`, `/settings` and `POST /resync` answer `409` with `state_conflict`. Once enabled, `state` is `active`, or `stalled` when there has been no poll for 24 hours. `last_changes_poll_at` and `pending_changes` are `null` while disabled. `held_batches` counts the batches waiting for a decision (`null` while disabled). `recent_errors` is always empty today: nothing fills it yet, so an empty list does not mean there were no errors, and a file that failed to import does not show up there. Today the feed carries changes of `kind="fields"`, `kind="new_asset"`, `kind="settings"`, with `td_deletion_marks_in_cms`, `kind="deleted"` and `kind="restored"`, and, in read mode for tokens with `articles:read`, `article_sent`. Only a token with `media:read` acknowledges the feed for the organization: its polls count for `stalled` and `pending_changes`, and a token with only article scopes keeps its own cursor without moving them. New files, field changes and deletions sent by the CMS are accepted now.
+- **Working now:** `GET /v3/cms/status` and `GET /v3/cms/changes` (need `media:read` or `articles:read`), `GET /v3/cms/held` (needs `media:read`), `GET /v3/cms/articles/{article_id}` and `GET /v3/cms/articles/awaiting` (need `articles:read`), `POST /v3/cms/articles/{article_id}/result` and `POST /v3/cms/articles/published` (need `articles:write`),`POST /v3/cms/media`, `POST /v3/cms/media/fields`, `POST /v3/cms/media/{asset_id}/link`, `POST /v3/cms/media/push-existing`, `POST /v3/cms/media/deletions`, `POST /v3/cms/resync` and `POST /v3/cms/held/{held_id}/decision` (need `media:write`), `GET /v3/cms/settings` and `PUT /v3/cms/settings` (need `settings:read` and `settings:write`), `GET /v3/cms/backfill/requests` and `POST /v3/cms/backfill/requests/{request_id}/pages` (need `backfill:write`) and `GET /v3/cms/openapi.json` (no token). A super admin enables the integration for your organization; the first poll does not enable it, but it does switch your organization to this API (see Switching to this API). Until then `state` in `/status` is `disabled` and `GET /changes`, `/settings` and `POST /resync` answer `409` with `state_conflict`. Once enabled, `state` is `active`, or `stalled` when there has been no poll for 24 hours. `last_changes_poll_at` and `pending_changes` are `null` while disabled. `held_batches` counts the batches waiting for a decision (`null` while disabled). `recent_errors` is always empty today: nothing fills it yet, so an empty list does not mean there were no errors, and a file that failed to import does not show up there. Today the feed carries changes of `kind="fields"`, `kind="new_asset"`, `kind="settings"`, with `td_deletion_marks_in_cms`, `kind="deleted"` and `kind="restored"`, and, in read mode for tokens with `articles:read`, `article_sent`. The organization has one acknowledged position in the feed, whichever token passes the cursor, and only polls of a token with `media:read` move it and count for `stalled` and `pending_changes`; a token with only article scopes reads with the same kind of cursor without moving them. In read mode without a media client, `stalled` means a send has waited more than 24 hours for your CMS to read it. New files, field changes and deletions sent by the CMS are accepted now.
 - **Planned routes:** none today. A future operation that is not ready yet carries `x-status: planned` in the OpenAPI document; it checks your token and scope, then answers `501` with error code `not_implemented`. Order of checks on such a route: `401` (token), `403` (scope), `429` (rate limit), `409` (frozen organization, for writes), `422` (request shape), then `501`. A malformed JSON body is rejected with `422` before the token check, so it never reaches authentication.
 
 ## Getting a token and scopes
@@ -33,7 +33,7 @@ Tokens are issued by Tribune Desk; there is no self-service sign-up. Ask your Tr
 Authorization: Bearer tdcms_...
 ```
 
-Keep it secret, store it outside source control, and ask for a new one if it leaks. A missing, unknown or revoked token gives `401`. A valid token without the scope of the route gives `403`.
+Keep it secret, store it outside source control, and ask for a new one if it leaks. A token does not expire; only a super admin revokes it. An organization can hold several tokens at once, so to rotate one: get a new token, switch your CMS to it, then ask for the old one to be revoked. A missing, unknown or revoked token gives `401`. A valid token without the scope of the route gives `403`.
 
 | Scope | Allows |
 |---|---|
@@ -53,7 +53,7 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 ```
 
 ```
-{"org_code":"example-org","contract_version":"3.3.0-draft","scopes":["media:read"],"state":"active", ...}
+{"org_code":"example-org","contract_version":"3.4.0-draft","scopes":["media:read"],"state":"active", ...}
 ```
 
 ## Routes and the scope each needs
@@ -74,6 +74,7 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 | `POST /v3/cms/held/{held_id}/decision` | `media:write` | Send or discard a held batch (working today) |
 | `GET /v3/cms/backfill/requests` | `backfill:write` | Export requests for the historical import |
 | `POST /v3/cms/backfill/requests/{request_id}/pages` | `backfill:write` | Upload one page of export results (up to 1000 candidates) |
+| `GET /v3/cms/articles/awaiting` | `articles:read` | List sends waiting for a result (read mode) |
 | `GET /v3/cms/articles/{article_id}` | `articles:read` | Read a sent article (read mode) |
 | `POST /v3/cms/articles/{article_id}/result` | `articles:write` | Report the outcome of a sent article (read mode) |
 | `POST /v3/cms/articles/published` | `articles:write` | Report where delivered articles were published (level 2, link back) |

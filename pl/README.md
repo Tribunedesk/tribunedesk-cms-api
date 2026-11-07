@@ -1,4 +1,4 @@
-<!-- translated-from: README.md sha256:b965dabb177c6352 -->
+<!-- translated-from: README.md sha256:0221e673bfa56562 -->
 # Tribune Desk CMS API: przewodnik integracji
 
 To API łączy system zarządzania treścią (CMS) z Tribune Desk, narzędziem redakcyjnym, które pisze artykuły. Twój CMS odbiera artykuły wysłane przez redaktorów, informuje Tribune Desk, gdzie zostały opublikowane, i może utrzymywać swoją bibliotekę mediów w synchronizacji. Klientem może być dowolny CMS; nic tutaj nie zakłada konkretnego produktu. Wtyczka Tribune Desk dla WordPress jest jedną z jego implementacji; nie potrzebujesz jej, żeby zbudować własną.
@@ -23,7 +23,7 @@ Kontrakt opisuje [dokument OpenAPI](../openapi.json) (dostępny także pod `http
 
 ## Co działa dzisiaj
 
-- **Działa już teraz:** `GET /v3/cms/status` i `GET /v3/cms/changes` (wymagają `media:read` lub `articles:read`), `GET /v3/cms/held` (wymaga `media:read`), `GET /v3/cms/articles/{article_id}` (wymaga `articles:read`), `POST /v3/cms/articles/{article_id}/result` i `POST /v3/cms/articles/published` (wymagają `articles:write`),`POST /v3/cms/media`, `POST /v3/cms/media/fields`, `POST /v3/cms/media/{asset_id}/link`, `POST /v3/cms/media/push-existing`, `POST /v3/cms/media/deletions`, `POST /v3/cms/resync` i `POST /v3/cms/held/{held_id}/decision` (wymagają `media:write`), `GET /v3/cms/settings` i `PUT /v3/cms/settings` (wymagają `settings:read` i `settings:write`), `GET /v3/cms/backfill/requests` i `POST /v3/cms/backfill/requests/{request_id}/pages` (wymagają `backfill:write`) oraz `GET /v3/cms/openapi.json` (bez tokenu). Integrację dla Twojej organizacji włącza superadmin; pierwsze odpytanie jej nie włącza, ale przełącza Twoją organizację na to API (zob. Przejście na to API). Do tego czasu `state` w `/status` ma wartość `disabled`, a `GET /changes`, `/settings` i `POST /resync` odpowiadają `409` z `state_conflict`. Po włączeniu `state` ma wartość `active` albo `stalled`, gdy przez 24 godziny nie było odpytania. `last_changes_poll_at` i `pending_changes` mają wartość `null`, dopóki integracja jest wyłączona. `held_batches` liczy partie czekające na decyzję (`null`, dopóki integracja jest wyłączona). `recent_errors` jest dziś zawsze puste: nic go jeszcze nie wypełnia, więc pusta lista nie oznacza, że błędów nie było, a plik, którego nie udało się zaimportować, się tam nie pojawia. Dziś strumień zmian niesie zmiany `kind="fields"`, `kind="new_asset"`, `kind="settings"`, przy `td_deletion_marks_in_cms` także `kind="deleted"` i `kind="restored"`, a w trybie odczytu, dla tokenów z `articles:read`, `article_sent`. Tylko token z `media:read` potwierdza strumień zmian w imieniu organizacji: jego odpytania liczą się do `stalled` i `pending_changes`, a token mający wyłącznie zakresy artykułów prowadzi własny kursor, nie przesuwając ich. Nowe pliki, zmiany pól i usunięcia wysyłane przez CMS są już przyjmowane.
+- **Działa już teraz:** `GET /v3/cms/status` i `GET /v3/cms/changes` (wymagają `media:read` lub `articles:read`), `GET /v3/cms/held` (wymaga `media:read`), `GET /v3/cms/articles/{article_id}` i `GET /v3/cms/articles/awaiting` (wymagają `articles:read`), `POST /v3/cms/articles/{article_id}/result` i `POST /v3/cms/articles/published` (wymagają `articles:write`),`POST /v3/cms/media`, `POST /v3/cms/media/fields`, `POST /v3/cms/media/{asset_id}/link`, `POST /v3/cms/media/push-existing`, `POST /v3/cms/media/deletions`, `POST /v3/cms/resync` i `POST /v3/cms/held/{held_id}/decision` (wymagają `media:write`), `GET /v3/cms/settings` i `PUT /v3/cms/settings` (wymagają `settings:read` i `settings:write`), `GET /v3/cms/backfill/requests` i `POST /v3/cms/backfill/requests/{request_id}/pages` (wymagają `backfill:write`) oraz `GET /v3/cms/openapi.json` (bez tokenu). Integrację dla Twojej organizacji włącza superadmin; pierwsze odpytanie jej nie włącza, ale przełącza Twoją organizację na to API (zob. Przejście na to API). Do tego czasu `state` w `/status` ma wartość `disabled`, a `GET /changes`, `/settings` i `POST /resync` odpowiadają `409` z `state_conflict`. Po włączeniu `state` ma wartość `active` albo `stalled`, gdy przez 24 godziny nie było odpytania. `last_changes_poll_at` i `pending_changes` mają wartość `null`, dopóki integracja jest wyłączona. `held_batches` liczy partie czekające na decyzję (`null`, dopóki integracja jest wyłączona). `recent_errors` jest dziś zawsze puste: nic go jeszcze nie wypełnia, więc pusta lista nie oznacza, że błędów nie było, a plik, którego nie udało się zaimportować, się tam nie pojawia. Dziś strumień zmian niesie zmiany `kind="fields"`, `kind="new_asset"`, `kind="settings"`, przy `td_deletion_marks_in_cms` także `kind="deleted"` i `kind="restored"`, a w trybie odczytu, dla tokenów z `articles:read`, `article_sent`. Organizacja ma jedną potwierdzoną pozycję w strumieniu, niezależnie od tego, który token podaje kursor, i tylko odpytania tokenu z `media:read` ją przesuwają oraz liczą się do `stalled` i `pending_changes`; token mający wyłącznie zakresy artykułów czyta takim samym kursorem, nie przesuwając ich. W trybie odczytu bez klienta mediów `stalled` znaczy, że wysyłka czeka na odczyt przez twój CMS dłużej niż 24 godziny. Nowe pliki, zmiany pól i usunięcia wysyłane przez CMS są już przyjmowane.
 - **Planowane trasy:** dziś żadne. Przyszła operacja, która nie jest jeszcze gotowa, ma w dokumencie OpenAPI oznaczenie `x-status: planned`; sprawdza Twój token i zakres, po czym odpowiada `501` z kodem błędu `not_implemented`. Kolejność sprawdzeń na takiej trasie: `401` (token), `403` (zakres), `429` (limit żądań), `409` (zamrożona organizacja, dla zapisów), `422` (kształt żądania), a na końcu `501`. Niepoprawne body JSON jest odrzucane z `422` przed sprawdzeniem tokenu, więc nigdy nie dociera do uwierzytelniania.
 
 ## Uzyskanie tokenu i zakresów
@@ -34,7 +34,7 @@ Tokeny wydaje Tribune Desk; nie ma samodzielnej rejestracji. Zwróć się do swo
 Authorization: Bearer tdcms_...
 ```
 
-Trzymaj go w tajemnicy, przechowuj poza systemem kontroli wersji i poproś o nowy, jeśli wycieknie. Brakujący, nieznany lub unieważniony token daje `401`. Ważny token bez zakresu danej trasy daje `403`.
+Trzymaj go w tajemnicy, przechowuj poza systemem kontroli wersji i poproś o nowy, jeśli wycieknie. Token nie wygasa; unieważnić go może tylko superadmin. Organizacja może mieć kilka tokenów naraz, więc wymiana wygląda tak: weź nowy token, przełącz na niego CMS, potem poproś o unieważnienie starego. Brakujący, nieznany lub unieważniony token daje `401`. Ważny token bez zakresu danej trasy daje `403`.
 
 | Zakres | Pozwala |
 |---|---|
@@ -54,7 +54,7 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 ```
 
 ```
-{"org_code":"example-org","contract_version":"3.3.0-draft","scopes":["media:read"],"state":"active", ...}
+{"org_code":"example-org","contract_version":"3.4.0-draft","scopes":["media:read"],"state":"active", ...}
 ```
 
 ## Trasy i wymagane zakresy
@@ -75,6 +75,7 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 | `POST /v3/cms/held/{held_id}/decision` | `media:write` | Wysłanie lub odrzucenie wstrzymanej partii (działa dzisiaj) |
 | `GET /v3/cms/backfill/requests` | `backfill:write` | Zlecenia eksportu do importu historycznego |
 | `POST /v3/cms/backfill/requests/{request_id}/pages` | `backfill:write` | Przesłanie jednej strony wyników eksportu (do 1000 kandydatów) |
+| `GET /v3/cms/articles/awaiting` | `articles:read` | Lista wysyłek czekających na wynik (tryb odczytu) |
 | `GET /v3/cms/articles/{article_id}` | `articles:read` | Odczyt wysłanego artykułu (tryb odczytu) |
 | `POST /v3/cms/articles/{article_id}/result` | `articles:write` | Zgłoszenie wyniku wysłanego artykułu (tryb odczytu) |
 | `POST /v3/cms/articles/published` | `articles:write` | Zgłoszenie, gdzie dostarczone artykuły zostały opublikowane (poziom 2, link zwrotny) |

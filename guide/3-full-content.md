@@ -10,7 +10,7 @@ Each entry of `internal_links` has:
 
 - `href`: the address the link points to in `html`, your address or the placeholder;
 - `article_id`: the Tribune Desk id of the linked article, the key to find your post;
-- `kind`: `cms` when the linked article has an address in your CMS, `placeholder` otherwise;
+- `kind`: `cms` when the linked article has an address in your CMS, `placeholder` otherwise; `null`, together with a `null` `article_id`, for a link to a page outside Tribune Desk: leave such a link as it is;
 - `anchor_text`, `url` and `headline`: the text of the link, the current address of the linked article and its headline.
 
 Step by step, when a delivery arrives:
@@ -26,13 +26,14 @@ Step by step, when a delivery arrives:
 
 - a missing key means: leave the existing links alone;
 - an empty list means: no older article should link here; remove this article from their boxes;
-- a list replaces the previous one for this article.
+- a list replaces the previous one for this article;
+- `null` means the same as a missing key.
 
 How the box looks and where it goes is up to your CMS. Tribune Desk only says which articles belong together.
 
 ## SEO, author and language
 
-`seo_title`, `meta_description` and `focus_keyphrase` are the editor's choice for search engines. `author` is who ordered the article; use it as the post author when `sent_by`, who clicked “Send to CMS”, cannot be matched to a user of your CMS. `language` is the newsroom's writing language (for example `pl`), when it is set.
+`seo_title`, `meta_description` and `focus_keyphrase` are the editor's choice for search engines. `author` is who ordered the article; use it as the post author when `sent_by`, who clicked “Send to CMS”, cannot be matched to a user of your CMS. Match a person first by `id` in your own mapping of Tribune Desk users to CMS users, then by `email`; `name` is for display only. Without a match use your default author. `language` is the newsroom's writing language, a BCP 47 tag (for example `pl`), when it is set. `evergreen` is informational: the article stays current, so you may keep it out of date-based archives. Text fields have no length limit on the Tribune Desk side: cut them to the limits of your CMS.
 
 ## The AI label
 

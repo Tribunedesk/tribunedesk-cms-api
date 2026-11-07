@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
@@ -30,14 +31,43 @@ def build_request(base_url: str, token: str, items: list[dict]) -> urllib.reques
     )
 
 
+class ApiError(Exception):
+    """An error answer of the API: HTTP status, `code`, `message` and `retry_after`."""
+
+    def __init__(self, status: int, code: str, message: str, retry_after: int | None) -> None:
+        super().__init__(f"{status} {code}: {message}")
+        self.status, self.code, self.message, self.retry_after = status, code, message, retry_after
+
+
 def report_published(base_url: str, token: str, items: list[dict]) -> dict:
     """Send the items and return the answer: one `{article_id, status}` per item, in order.
 
-    `status` is `ok`, `not_found`, `forbidden` or `invalid_url`. A bad item does not fail the
-    others; log it rather than sending it again unchanged. On `429` wait `retry_after` seconds.
+    `status` is `ok`, `not_found` or `invalid_url`. A bad item does not fail the others; log it
+    rather than sending it again unchanged. An error answer raises `ApiError`; on `429` or `503`
+    wait `retry_after` seconds before trying again.
     """
-    with urllib.request.urlopen(build_request(base_url, token, items), timeout=30) as response:
-        return json.load(response)
+    try:
+        with urllib.request.urlopen(build_request(base_url, token, items), timeout=30) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as exc:
+        raise _api_error(exc) from None
+
+
+def _api_error(exc: urllib.error.HTTPError) -> ApiError:
+    """`ApiError` from the error body; a gateway may answer with something that is not JSON."""
+    try:
+        body = json.loads(exc.read() or b"{}")
+    except ValueError:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    retry_after = body.get("retry_after")
+    return ApiError(
+        exc.code,
+        str(body.get("code", "unknown")),
+        str(body.get("message", exc.reason)),
+        retry_after if isinstance(retry_after, int) else None,
+    )
 
 
 def main() -> None:

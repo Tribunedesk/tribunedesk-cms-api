@@ -1,4 +1,4 @@
-<!-- translated-from: guide/4-media-library.md sha256:a6bda85a2c2ee7ab -->
+<!-- translated-from: guide/4-media-library.md sha256:0dee2d0af22093f4 -->
 # Poziom 4 – Biblioteka mediów
 
 ## Cykl synchronizacji
@@ -101,7 +101,7 @@ Przyjęty element nie ma jeszcze pliku. Para (twój `cms_media_id` i plik w Trib
 
 ### Dozwolone hosty plików
 
-Adres URL pliku musi być `https`, na porcie 443, bez danych logowania i na jednym z hostów: domenie twojej organizacji, hoście webhooka dostawy artykułu skonfigurowanego dla niej w Tribune Desk (nic tutaj go nie wywołuje) albo hoście, który dodał dla ciebie superadmin. Początkowe `www.` nie ma znaczenia, ale inne subdomeny i hosty CDN mają: poproś swój kontakt w Tribune Desk o ich dodanie. Żadna trasa nie wypisuje hostów; zły host widać tylko jako `host` albo `422`. Reszta adresu URL należy do ciebie: nie potrzebuje rozszerzenia pliku, a Tribune Desk nie wyciąga z niej identyfikatora.
+Adres URL pliku musi być `https`, na porcie 443, bez danych logowania i na jednym z hostów: domenie twojej organizacji, hoście webhooka dostawy artykułu skonfigurowanego dla niej w Tribune Desk (nic tutaj go nie wywołuje) albo hoście, który dodał dla ciebie superadmin. Początkowe `www.` nie ma znaczenia, ale inne subdomeny i hosty CDN mają: poproś swój kontakt w Tribune Desk o ich dodanie. `image_hosts` w `GET /v3/cms/status` i `GET /v3/cms/settings` wypisuje je razem z hostami magazynu Tribune Desk; host, którego tam brak, widać jako `host` albo `422`. Reszta adresu URL należy do ciebie: nie potrzebuje rozszerzenia pliku, a Tribune Desk nie wyciąga z niej identyfikatora.
 
 ## Pobieranie plików z Tribune Desk
 
@@ -146,6 +146,8 @@ Próg chroni przed wypadkami, więc decyzja należy do człowieka, nie do twojej
 
 `GET /v3/cms/settings` zwraca `variant` synchronizacji (`full`, `cms_to_td_only`, `td_to_cms_only` albo `custom`), poszczególne opcje i opcje zablokowane. `PUT /v3/cms/settings` wymaga `variant`; `options` jest wymagane dokładnie wtedy, gdy wariant to `custom`, i wtedy każdą opcję trzeba podać jawnie. Wariant ustawia cztery rzeczy, a każdą inną opcję zostawia bez zmian: `full` włącza `new_files_cms_to_td`, `new_files_td_to_cms` i wszystkie pola w obu kierunkach; `cms_to_td_only` włącza pierwszy kierunek i wyłącza drugi; `td_to_cms_only` odwrotnie. Zapis, który zmieniłby opcję zablokowaną przez Tribune Desk, daje `409` z `option_locked`, także gdy zmienia ją wariant, a ty jej nie podałeś. Każda zmiana ustawień, twoja albo blokada, pojawia się w strumieniu jako `kind="settings"`.
 
+`model_texts_to_cms` decyduje, czy teksty napisane przez model Tribune Desk (tekst alternatywny, podpis) trafiają do twojego CMS: `empty_only` wysyła je tylko do pola, które jest puste w Tribune Desk, `never` nie wysyła żadnego; teksty redaktora idą zawsze, gdy to pole jest włączone w `fields_td_to_cms`.
+
 Serwer stosuje każdą opcję poza jedną: `keep_nonempty_td_to_cms` stosuje klient, bo tylko CMS zna przechowywaną przez siebie wartość. Gdy jest włączona, nie nadpisuj niepustego pola w CMS-ie wartością ze strumienia. Pole zawierające same białe znaki liczy się jako puste, tak jak na serwerze. Przyjmij wersję nawet wtedy, gdy zachowujesz swoją wartość, a nowy plik nie ma czego zachowywać.
 
 **Bez `settings:read`** nie widzisz opcji, limitów ani tego, co oznacza zmiana `kind="settings"`, choć serwer i tak egzekwuje to wszystko poza powyższą regułą. Poproś o ten zakres. Bez niego pomijaj zmiany `kind="settings"`, przyjmij limity z tego przewodnika (100 elementów, 1000 na stronę historyczną) i zostaw `keep_nonempty_td_to_cms` wyłączone.
@@ -172,6 +174,6 @@ Prośba zamyka się po ostatniej stronie, a także gdy tylko osiągnie `max_file
 
 - Twój CMS odpytuje `GET /v3/cms/changes` i zapisuje kursor dopiero po zastosowaniu zwróconych zmian.
 - Nowe pliki, zmiany pól i usunięcia po twojej stronie docierają do Tribune Desk, a powtórzone żądanie nie tworzy duplikatów.
-- `409` z `base_version` rozwiązuje się przez odczyt bieżącej wartości, a nie przez ponowne wysłanie swojej.
+- Wynik pola `conflict` (w odpowiedzi `200`) rozwiązuje się przez przyjęcie `winning_value`, a nie przez ponowne wysłanie swojej wartości.
 - Wygasły kursor (`410`) prowadzi do resynchronizacji, a nie do nowego startu od teraz.
 - Wstrzymane partie są pokazywane człowiekowi, który o nich decyduje.
