@@ -100,7 +100,7 @@ To check, send the same item to `POST /media` again: it is safe. `ok`, `known` a
 
 ### Allowed file hosts
 
-A file URL must be `https`, on port 443, without login data, and on one of: the domain of your organization, the host of the article-delivery webhook configured for it in Tribune Desk (nothing here calls it) or a host a super admin added for you. A leading `www.` does not matter, but other subdomains and CDN hosts do: ask your Tribune Desk contact to add them. No route lists the hosts; a wrong one shows only as `host` or `422`. The rest of the URL is yours: it needs no file extension, and Tribune Desk does not parse it for an id.
+A file URL must be `https`, on port 443, without login data, and on one of: the domain of your organization, the host of the article-delivery webhook configured for it in Tribune Desk (nothing here calls it) or a host a super admin added for you. A leading `www.` does not matter, but other subdomains and CDN hosts do: ask your Tribune Desk contact to add them. `image_hosts` in `GET /v3/cms/status` and `GET /v3/cms/settings` lists them together with the Tribune Desk storage hosts; a host missing there shows as `host` or `422`. The rest of the URL is yours: it needs no file extension, and Tribune Desk does not parse it for an id.
 
 ## Taking files from Tribune Desk
 
@@ -145,6 +145,8 @@ The threshold protects against accidents, so the decision belongs to a person, n
 
 `GET /v3/cms/settings` returns the sync `variant` (`full`, `cms_to_td_only`, `td_to_cms_only` or `custom`), the individual options and the locked ones. `PUT /v3/cms/settings` needs `variant`; `options` is required exactly when the variant is `custom`, and then every option must be given explicitly. A variant sets four things and leaves every other option as it is: `full` turns on `new_files_cms_to_td`, `new_files_td_to_cms` and all fields both ways; `cms_to_td_only` turns on the first direction and off the second; `td_to_cms_only` the reverse. A write that would change an option locked by Tribune Desk gives `409` with `option_locked`, also when the variant changes it and you did not name it. Every change of the settings, yours or a lock, appears in the feed as `kind="settings"`.
 
+`model_texts_to_cms` decides whether texts the Tribune Desk model wrote (alt text, caption) reach your CMS: `empty_only` sends them only to a field that is empty in Tribune Desk, `never` sends none; texts an editor wrote always go, when that field is on in `fields_td_to_cms`.
+
 The server applies every option except one: `keep_nonempty_td_to_cms` is applied by the client, because only the CMS knows the value it holds. When it is on, do not overwrite a non-empty field in the CMS with a value from the feed. A field of only whitespace counts as empty, as it does on the server. Take the version even when you keep your value, and a new file has nothing to keep.
 
 **Without `settings:read`** you do not see the options, the limits or what a `kind="settings"` change means, though the server still enforces all of it except the rule above. Ask for this scope. Without it, skip `kind="settings"` changes, assume the limits of this guide (100 items, 1000 per historical page) and leave `keep_nonempty_td_to_cms` off.
@@ -171,6 +173,6 @@ A request closes after its last page and also as soon as it reaches `max_files`;
 
 - Your CMS polls `GET /v3/cms/changes` and stores the cursor only after applying the changes it returned.
 - New files, field changes and deletions on your side reach Tribune Desk, and a repeated request creates no duplicates.
-- A `409` with `base_version` is resolved by reading the current value, not by sending yours again.
+- A field result `conflict` (in a `200` answer) is resolved by adopting `winning_value`, not by sending yours again.
 - An expired cursor (`410`) leads to a resync, not to a fresh start from now.
 - Held batches are shown to a person who decides them.
