@@ -53,8 +53,23 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 ```
 
 ```
-{"org_code":"example-org","contract_version":"3.4.0-draft","scopes":["media:read"],"state":"active", ...}
+{"org_code":"example-org","contract_version":"3.4.1-draft","scopes":["media:read"],"state":"active", ...}
 ```
+
+## What to ask Tribune Desk for
+
+Tribune Desk sets up each integration by hand. Pick the levels you build, then ask your Tribune Desk contact for what their rows list.
+
+| Level | Ask for | Why |
+|---|---|---|
+| 1, webhook | a signing secret (`whsec_`, shown once) and your webhook address set for your organization (`https://` on a public host); a newsroom user can also set it in Tribune Desk Settings, Integrations | Without an active signing secret or a webhook address, “Send to CMS” sends nothing. The integration does not need to be enabled. |
+| 1, webhook, image hosts | a token with `articles:read`, or the list of Tribune Desk storage hosts | With the token, `GET /v3/cms/status` lists `image_hosts`, the hosts you may download images from. |
+| 1, read mode | read mode switched on for your organization, the integration enabled, and a token with `articles:read` and `articles:write` | Read mode works only while the integration is enabled; you read sent articles and report the result with these scopes. |
+| 2 | a token with `articles:write` (a read mode token already has it) | The link back needs only this scope; the integration does not need to be enabled. |
+| 3 | nothing for links, SEO, author and the AI label; for the “read more” box, ask Tribune Desk to switch it on for your organization | Until it is switched on, deliveries leave out `backlink_sources`. |
+| 4 | the integration and the media library enabled for your organization; a token with `media:read`, `media:write` and `settings:read`, plus `settings:write` if your CMS changes the sync settings and `backfill:write` for the historical import; the extra hosts that serve your files (a CDN, a media subdomain) | The media routes answer `409` until both are switched on; Tribune Desk fetches your files only from allowed hosts. |
+
+One token may carry every scope you need; ask for one token per organization. Everything else is in this guide: you can build your integration and test it before you get any of these.
 
 ## Routes and the scope each needs
 

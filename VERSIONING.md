@@ -1,6 +1,6 @@
 # Versioning
 
-> The contract is a **draft** (`3.4.0-draft`) and may change until it is declared stable. No dates are promised.
+> The contract is a **draft** (`3.4.1-draft`) and may change until it is declared stable. No dates are promised.
 
 The version of the contract is `info.version` in the OpenAPI document and `contract_version` in `GET /v3/cms/status`. It follows semantic versioning:
 
