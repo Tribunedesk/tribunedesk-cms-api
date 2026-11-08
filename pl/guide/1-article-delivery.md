@@ -1,11 +1,11 @@
-<!-- translated-from: guide/1-article-delivery.md sha256:12f16d86091d3b84 -->
+<!-- translated-from: guide/1-article-delivery.md sha256:81ddcf2a8600493c -->
 # Poziom 1 – Dostawa artykułu
 
 ## Webhook dostawy artykułu
 
 To jedyne wywołanie, które Tribune Desk kieruje do ciebie: gdy redaktor kliknie „Wyślij do CMS”, Tribune Desk wysyła artykuł na adres webhooka ustawiony dla twojej organizacji. Dokument OpenAPI opisuje je w sekcji `webhooks` jako `article.delivered`. Twój webhook nie potrzebuje żadnego tokenu z tego API; to osobny adres po twojej stronie.
 
-**Adres webhooka.** Ustawia go dla twojej organizacji osoba kontaktowa w Tribune Desk; żadna trasa tego API go nie zmienia. Musi to być `https://` na publicznym hoście (port dowolny); `http://`, adresy prywatne i `localhost` są odrzucane. Przekierowania nie są obsługiwane. Żeby wypróbować odbiornik na własnym komputerze, postaw przed nim tunel (na przykład `cloudflared tunnel` albo `ngrok http 8080`) i podaj adres `https://`, który wypisze.
+**Adres webhooka.** Ustawia go dla twojej organizacji osoba kontaktowa w Tribune Desk albo użytkownik redakcji w Ustawieniach Tribune Desk, w sekcji Integracje; żadna trasa tego API go nie zmienia. Musi to być `https://` na publicznym hoście (port dowolny); `http://`, adresy prywatne i `localhost` są odrzucane. Przekierowania nie są obsługiwane. Żeby wypróbować odbiornik na własnym komputerze, postaw przed nim tunel (na przykład `cloudflared tunnel` albo `ngrok http 8080`) i podaj adres `https://`, który wypisze.
 
 **Kilka organizacji pod jednym adresem.** Każda treść niesie `org_code`, ale zanim jej zaufasz, potrzebujesz właściwego sekretu podpisu. Lepiej użyć osobnego adresu dla każdej organizacji (na przykład `/td/webhook/{org_code}`). Przy jednym wspólnym adresie odczytaj `org_code` z surowej treści, wybierz sekret tej organizacji, zweryfikuj podpis na tych samych surowych bajtach i dopiero wtedy działaj na treści.
 

@@ -8,5 +8,6 @@ Minimal clients for the first two levels, in Python, with the standard library o
 | `python/level2_link_back.py` | 2. Link back | reporting where an article was published |
 | `payloads/article-delivered.json` | 1 and 3 | a complete delivery body, with every field |
 | `payloads/article-delivery-result.json` | 1 | an answer to a delivery |
+| `vectors/webhook-signature.json` | 1 | signature test vectors: run your signature check on each and compare with `valid` |
 
 All names, addresses and ids in the samples are made up. The guide for each level is in [`guide/`](../guide).

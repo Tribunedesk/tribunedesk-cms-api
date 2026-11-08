@@ -4,7 +4,7 @@
 
 This is the one call Tribune Desk makes to you: when an editor clicks “Send to CMS”, Tribune Desk sends the article to the webhook address set for your organization. The OpenAPI document describes it under `webhooks` as `article.delivered`. Your webhook needs no token from this API; it is a separate address on your side.
 
-**The webhook address.** Your Tribune Desk contact sets it for your organization; no route of this API changes it. It must be `https://` on a public host (any port); `http://`, private addresses and `localhost` are refused. Redirects are not followed. To try a receiver on your own machine, put a tunnel in front of it (for example `cloudflared tunnel` or `ngrok http 8080`) and give the `https://` address it prints.
+**The webhook address.** Your Tribune Desk contact sets it for your organization, or a newsroom user sets it in Tribune Desk Settings, Integrations; no route of this API changes it. It must be `https://` on a public host (any port); `http://`, private addresses and `localhost` are refused. Redirects are not followed. To try a receiver on your own machine, put a tunnel in front of it (for example `cloudflared tunnel` or `ngrok http 8080`) and give the `https://` address it prints.
 
 **Several organizations at one address.** Every body carries `org_code`, but you need the right signing secret before you trust the body. Prefer one address per organization (for example `/td/webhook/{org_code}`). With one shared address, read `org_code` from the raw body, pick that organization's secret, verify the signature on the same raw bytes, and only then act on the body.
 

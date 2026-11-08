@@ -1,4 +1,4 @@
-<!-- translated-from: README.md sha256:0221e673bfa56562 -->
+<!-- translated-from: README.md sha256:576be1358dc5e4e2 -->
 # Tribune Desk CMS API: przewodnik integracji
 
 To API łączy system zarządzania treścią (CMS) z Tribune Desk, narzędziem redakcyjnym, które pisze artykuły. Twój CMS odbiera artykuły wysłane przez redaktorów, informuje Tribune Desk, gdzie zostały opublikowane, i może utrzymywać swoją bibliotekę mediów w synchronizacji. Klientem może być dowolny CMS; nic tutaj nie zakłada konkretnego produktu. Wtyczka Tribune Desk dla WordPress jest jedną z jego implementacji; nie potrzebujesz jej, żeby zbudować własną.
@@ -54,8 +54,23 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 ```
 
 ```
-{"org_code":"example-org","contract_version":"3.4.0-draft","scopes":["media:read"],"state":"active", ...}
+{"org_code":"example-org","contract_version":"3.4.1-draft","scopes":["media:read"],"state":"active", ...}
 ```
+
+## O co poprosić Tribune Desk
+
+Tribune Desk konfiguruje każdą integrację ręcznie. Wybierz poziomy, które budujesz, i poproś swój kontakt w Tribune Desk o to, co podają ich wiersze.
+
+| Poziom | O co poprosić | Dlaczego |
+|---|---|---|
+| 1, webhook | sekret podpisu (`whsec_`, pokazywany raz) i ustawienie Twojego adresu webhooka dla organizacji (`https://` na publicznym hoście); użytkownik redakcji może go też ustawić sam w Ustawieniach Tribune Desk, w sekcji Integracje | Bez aktywnego sekretu podpisu albo adresu webhooka „Wyślij do CMS” nic nie wysyła. Integracja nie musi być włączona. |
+| 1, webhook, hosty obrazów | token z `articles:read` albo listę hostów magazynu plików Tribune Desk | Z tokenem `GET /v3/cms/status` podaje `image_hosts`, czyli hosty, z których wolno pobierać obrazy. |
+| 1, tryb odczytu | włączenie trybu odczytu dla organizacji, włączenie integracji i token z `articles:read` i `articles:write` | Tryb odczytu działa tylko przy włączonej integracji; tymi zakresami czytasz wysłane artykuły i zgłaszasz wynik. |
+| 2 | token z `articles:write` (token trybu odczytu już go ma) | Link zwrotny wymaga tylko tego zakresu; integracja nie musi być włączona. |
+| 3 | nic dla linków, SEO, autora i etykiety AI; dla boksu „Czytaj więcej” poproś Tribune Desk o włączenie go dla organizacji | Dopóki nie jest włączony, dostawy pomijają `backlink_sources`. |
+| 4 | włączenie integracji i biblioteki mediów dla organizacji; token z `media:read`, `media:write` i `settings:read`, do tego `settings:write`, jeśli Twój CMS zmienia ustawienia synchronizacji, i `backfill:write` do importu historycznego; dodatkowe hosty, z których serwujesz pliki (CDN, subdomena mediów) | Trasy mediów odpowiadają `409`, dopóki oba nie są włączone; Tribune Desk pobiera Twoje pliki tylko z dozwolonych hostów. |
+
+Jeden token może mieć wszystkie potrzebne zakresy; poproś o jeden token na organizację. Cała reszta jest w tym przewodniku: integrację zbudujesz i przetestujesz, zanim dostaniesz cokolwiek z tej listy.
 
 ## Trasy i wymagane zakresy
 
