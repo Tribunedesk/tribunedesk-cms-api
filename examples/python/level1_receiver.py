@@ -7,9 +7,11 @@ Standard library only. Run it with your signing secret:
 
     TD_WEBHOOK_SECRET=whsec_... PORT=8080 python level1_receiver.py
 
-and set http://<your host>:8080/ as the webhook address of your organization. Posts are kept in
-memory; a real CMS stores them in its database. In your own code prefer an official Standard
-Webhooks library; `verify_signature` below shows what such a library checks.
+The webhook address must be `https://` on a public host (any port), so to try it on your own
+machine put a tunnel in front of it, for example `cloudflared tunnel --url http://localhost:8080`
+or `ngrok http 8080`, and give Tribune Desk the `https://` address the tunnel prints. Posts are
+kept in memory; a real CMS stores them in its database. In your own code prefer an official
+Standard Webhooks library; `verify_signature` below shows what such a library checks.
 """
 
 from __future__ import annotations
@@ -22,10 +24,16 @@ import json
 import os
 import time
 from collections.abc import Mapping
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 SECRET_PREFIX = "whsec_"
 TOLERANCE_SECONDS = 300  # reject requests more than 5 minutes away from our clock
+MAX_BODY_BYTES = 2 * 1024 * 1024  # an article is far smaller; refuse anything bigger (413)
+
+
+class BodyTooLarge(Exception):
+    """`Content-Length` above `MAX_BODY_BYTES`."""
 
 
 class InvalidSignature(Exception):
@@ -85,9 +93,10 @@ def verify_signature(
 
     # 4. The header holds "v1,<signature>" entries separated by spaces (two during a secret
     #    rotation). One match is enough; compare in constant time.
+    #    Compare bytes: `compare_digest` on text refuses non-ASCII input with a TypeError.
     for entry in signatures.split(" "):
         version, _, value = entry.partition(",")
-        if version == "v1" and hmac.compare_digest(value, expected):
+        if version == "v1" and hmac.compare_digest(value.encode(), expected.encode()):
             return
     raise InvalidSignature("no signature matches")
 
@@ -108,11 +117,19 @@ def handle_delivery(
     """
     verify_signature(secret, headers, body, now=now)
     article = json.loads(body)
+    if not isinstance(article, dict):
+        raise ValueError("the body is not a JSON object")
     article_id = article["article_id"]
+    sent_at = datetime.fromisoformat(article["sent_at"])
     existing = store.get(article_id)
     post_id = existing["cms_post_id"] if existing else str(len(store) + 1)
+    edit_url = f"https://cms.example.com/posts/{post_id}/edit"
+    if existing and sent_at < existing["sent_at"]:
+        # An attempt of an older send that arrived after a newer one: keep the newer post.
+        return {"cms_post_id": post_id, "edit_url": edit_url}
     store[article_id] = {
         "cms_post_id": post_id,
+        "sent_at": sent_at,
         "title": article["title"],
         "html": article["html"],
         "excerpt": article.get("excerpt"),
@@ -123,7 +140,7 @@ def handle_delivery(
         "cms_post_id": post_id,
         "status": "updated" if existing else "created",
         "permalink": None,  # a draft has no public address yet; see level 2
-        "edit_url": f"https://cms.example.com/posts/{post_id}/edit",
+        "edit_url": edit_url,
     }
 
 
@@ -137,7 +154,10 @@ def content_length(value: str | None) -> int:
         return 0
     if not (value.isascii() and value.isdigit()):
         raise ValueError("invalid Content-Length")
-    return int(value)
+    length = int(value)
+    if length > MAX_BODY_BYTES:
+        raise BodyTooLarge(length)
+    return length
 
 
 def main() -> None:
@@ -151,10 +171,13 @@ def main() -> None:
             try:
                 body = self.rfile.read(content_length(self.headers.get("Content-Length")))
                 answer = handle_delivery(body, dict(self.headers), secret=secret, store=store)
+            except BodyTooLarge:
+                self._reply(413, {"error": "body too large"})
+                return
             except InvalidSignature:
                 self._reply(401, {"error": "invalid signature"})
                 return
-            except (ValueError, KeyError):
+            except (ValueError, KeyError, TypeError):
                 self._reply(400, {"error": "invalid body"})
                 return
             self._reply(200, answer)

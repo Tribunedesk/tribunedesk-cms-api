@@ -1,4 +1,4 @@
-<!-- translated-from: guide/3-full-content.md sha256:05bd4e342bb1eac9 -->
+<!-- translated-from: guide/3-full-content.md sha256:7fb80ec40d73bdcb -->
 # Poziom 3 – Pełna treść
 
 Poziom 3 korzysta z tych samych dostaw co poziom 1 i odczytuje więcej ich pól. Nic tutaj nie wymaga nowej trasy.
@@ -11,7 +11,7 @@ Każdy element `internal_links` zawiera:
 
 - `href`: adres, na który wskazuje link w `html`, twój adres albo zastępnik;
 - `article_id`: identyfikator linkowanego artykułu w Tribune Desk, klucz do odnalezienia twojego wpisu;
-- `kind`: `cms`, gdy linkowany artykuł ma adres w twoim CMS, w przeciwnym razie `placeholder`;
+- `kind`: `cms`, gdy linkowany artykuł ma adres w twoim CMS, w przeciwnym razie `placeholder`; `null`, razem z `null` w `article_id`, dla linku do strony spoza Tribune Desk: zostaw taki link bez zmian;
 - `anchor_text`, `url` i `headline`: tekst linku, bieżący adres linkowanego artykułu i jego tytuł.
 
 Krok po kroku, gdy przychodzi dostawa:
@@ -27,13 +27,14 @@ Krok po kroku, gdy przychodzi dostawa:
 
 - brak klucza oznacza: nie ruszaj istniejących linków;
 - pusta lista oznacza: żaden starszy artykuł nie powinien tu linkować; usuń ten artykuł z ich boksów;
-- lista zastępuje poprzednią listę dla tego artykułu.
+- lista zastępuje poprzednią listę dla tego artykułu;
+- `null` znaczy to samo co brak klucza.
 
 Wygląd boksu i jego miejsce zależą od twojego CMS. Tribune Desk mówi tylko, które artykuły do siebie pasują.
 
 ## SEO, autor i język
 
-`seo_title`, `meta_description` i `focus_keyphrase` to wybór redaktora na potrzeby wyszukiwarek. `author` to osoba, która zamówiła artykuł; użyj jej jako autora wpisu, gdy `sent_by`, czyli osoby, która kliknęła „Wyślij do CMS”, nie da się dopasować do użytkownika twojego CMS. `language` to język, w którym pisze redakcja (na przykład `pl`), o ile jest ustawiony.
+`seo_title`, `meta_description` i `focus_keyphrase` to wybór redaktora na potrzeby wyszukiwarek. `author` to osoba, która zamówiła artykuł; użyj jej jako autora wpisu, gdy `sent_by`, czyli osoby, która kliknęła „Wyślij do CMS”, nie da się dopasować do użytkownika twojego CMS. Osobę dopasowuj najpierw po `id` we własnym powiązaniu użytkowników Tribune Desk z użytkownikami CMS, potem po `email`; `name` służy tylko do wyświetlania. Bez dopasowania użyj domyślnego autora. `language` to język, w którym pisze redakcja, znacznik BCP 47 (na przykład `pl`), o ile jest ustawiony. `evergreen` jest informacyjne: artykuł nie traci aktualności, więc możesz go trzymać poza archiwami według dat. Pola tekstowe nie mają limitu długości po stronie Tribune Desk: przycinaj je do limitów swojego CMS.
 
 ## Oznaczenie AI
 
