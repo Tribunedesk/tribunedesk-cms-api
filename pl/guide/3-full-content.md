@@ -1,4 +1,4 @@
-<!-- translated-from: guide/3-full-content.md sha256:7fb80ec40d73bdcb -->
+<!-- translated-from: guide/3-full-content.md sha256:f28c65682c504475 -->
 # Poziom 3 – Pełna treść
 
 Poziom 3 korzysta z tych samych dostaw co poziom 1 i odczytuje więcej ich pól. Nic tutaj nie wymaga nowej trasy.
@@ -59,7 +59,7 @@ Każdy może sprawdzić oznaczenie bez tokenu, pod `https://api.tribunedesk.com`
 
 ## Gotowe, gdy
 
-- Zastępniki są zastępowane twoimi adresami albo tekst linku zostaje bez linku, a wcześniejsze wpisy są aktualizowane, gdy artykuł docelowy zostanie opublikowany.
+- Zastępniki są zastępowane twoimi adresami albo tekst linku zostaje bez linku. Powrót do wcześniejszych wpisów, gdy artykuł docelowy zostanie opublikowany, jest opcjonalny.
 - Boks „Czytaj więcej” działa zgodnie z `backlink_sources`, łącznie z zasadami dla brakującego klucza i pustej listy.
 - Pola SEO, autor i język są zapisane przy wpisie.
 - Oznaczenie AI jest w `<head>` każdej publicznej strony utworzonej z dostawy, której `ai_provenance` nie jest `null`.

@@ -1,4 +1,4 @@
-<!-- translated-from: guide/1-article-delivery.md sha256:81ddcf2a8600493c -->
+<!-- translated-from: guide/1-article-delivery.md sha256:d801ca930a0fd790 -->
 # Poziom 1 – Dostawa artykułu
 
 ## Webhook dostawy artykułu
@@ -31,7 +31,7 @@ Gdy twój CMS nie może przyjmować żądań z internetu, superadmin przełącza
 1. Odpytuj `GET /v3/cms/changes` tokenem z zakresem `articles:read`. Wysłany artykuł pojawia się jako zmiana rodzaju `article_sent` ze swoim `article_id`. Token widzi tylko rodzaje odpowiadające jego zakresom: `article_sent` wymaga `articles:read`, każdy inny rodzaj `media:read`; kursor i tak przesuwa się za rodzaje, których nie widzisz. Tryb odczytu wymaga integracji włączonej przez superadmina.
 2. Pobierz artykuł przez `GET /v3/cms/articles/{article_id}`. Treść to ten sam `ArticleDelivery`, który niesie webhook, zbudowany z bieżącego stanu artykułu, z `sent_at` wysyłki. Nagłówek `X-Delivery-Id` wskazuje tę wysyłkę; zachowaj go. Artykuł, który nigdy nie został wysłany, daje `404`.
 3. Utwórz lub zaktualizuj wpis, a potem zgłoś wynik przez `POST /v3/cms/articles/{article_id}/result` tokenem z zakresem `articles:write`. Treść (`ArticleResultReport`) to to, czym odpowiedziałby twój webhook, plus `delivery_id`: `X-Delivery-Id` z kroku 2. Z nim wynik zamyka dokładnie tę wysyłkę; jeśli zastąpiła ją nowsza wysyłka artykułu, dostajesz `409` ze `state_conflict` i nic nie zostaje zapisane, więc pobierz artykuł jeszcze raz. Bez `delivery_id` wynik zamyka najnowszą czekającą wysyłkę. Jeśli twój CMS nie mógł przyjąć artykułu, wyślij zamiast tego `error` z krótkim powodem: redaktor zobaczy wysyłkę jako nieudaną z tym tekstem. W odróżnieniu od odpowiedzi webhooka treść jest walidowana: pole złego typu daje `422`. Pole dobrego typu, którego Tribune Desk nie zapisał, jest na liście `ignored_fields` odpowiedzi. Artykuł, który nigdy nie został wysłany, daje `409` i nic nie zostaje zapisane. Ponowne zgłoszenie wyniku jest bezpieczne.
-4. Po `410 cursor_expired` z `GET /changes` token bez `media:write` nie uruchomi resynchronizacji. Pobierz listę wysyłek, które wciąż czekają, przez `GET /v3/cms/articles/awaiting` (`articles:read`, najstarsze pierwsze, strony przez `next_cursor`), obsłuż każdą jak w krokach 2 i 3, a potem odpytuj `GET /changes` od nowa, bez kursora.
+4. Po `410 cursor_expired` z `GET /changes` token bez `media:write` nie uruchomi resynchronizacji. Pobierz listę wysyłek, które wciąż czekają, przez `GET /v3/cms/articles/awaiting` (`articles:read`, najstarsze pierwsze, strony przez `next_cursor`), obsłuż każdą jak w krokach 2 i 3, a potem odpytuj `GET /changes` od nowa, bez kursora. Odpytanie bez kursora zaczyna się od teraz i nie zwraca historii, niezależnie od zakresów tokenu; wysyłka zrobiona między ostatnią stroną `GET /articles/awaiting` a tym odpytaniem nadal jest na tamtej liście, więc przeczytaj ją raz jeszcze po odpytaniu. `GET /articles/awaiting` stronicuje według czasu wysyłki: wysyłka zrobiona w trakcie stronicowania pojawia się na późniejszej stronie, a wysyłka, dla której zgłosisz wynik, znika bez przesuwania pozostałych. Czytaj, dopóki `next_cursor` nie jest `null`.
 
 ## Weryfikacja podpisu
 
@@ -122,3 +122,11 @@ Działający odbiornik w Pythonie, bez zależności, znajdziesz w [`examples/pyt
 - Ponowna próba z tym samym `webhook-id` nie tworzy drugiego szkicu, a nowa wysyłka tego samego `article_id` aktualizuje wpis utworzony za pierwszym razem.
 - Pola, których nie znasz, są ignorowane, a nie odrzucane; nie waliduj treści schematem, który odrzuca nieznane właściwości.
 - Próba starszej wysyłki, która dotrze po nowszej, nie nadpisuje wpisu.
+- Dwie nakładające się próby jednej wysyłki tworzą jeden wpis, nie dwa.
+- Obrazy są pobierane tylko z hostów z `image_hosts`; obraz z innego hosta nie jest pobierany.
+
+W trybie odczytu dodatkowo:
+
+- Każdy wynik niesie `delivery_id` wysyłki, na którą odpowiada, albo `error`, gdy twój CMS nie mógł przyjąć artykułu.
+- Po `409 state_conflict` na wynik artykuł jest pobierany ponownie i odpowiedź dotyczy nowszej wysyłki.
+- Po `410 cursor_expired` wysyłki z listy `GET /v3/cms/articles/awaiting` są obsłużone, zanim `GET /v3/cms/changes` zostanie znowu odpytany bez kursora.

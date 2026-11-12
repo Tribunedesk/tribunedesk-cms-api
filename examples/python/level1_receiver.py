@@ -126,7 +126,7 @@ def handle_delivery(
     edit_url = f"https://cms.example.com/posts/{post_id}/edit"
     if existing and sent_at < existing["sent_at"]:
         # An attempt of an older send that arrived after a newer one: keep the newer post.
-        return {"cms_post_id": post_id, "edit_url": edit_url}
+        return {"cms_post_id": post_id, "status": "updated", "edit_url": edit_url}
     store[article_id] = {
         "cms_post_id": post_id,
         "sent_at": sent_at,
