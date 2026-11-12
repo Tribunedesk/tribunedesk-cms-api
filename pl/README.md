@@ -1,4 +1,4 @@
-<!-- translated-from: README.md sha256:576be1358dc5e4e2 -->
+<!-- translated-from: README.md sha256:bf723a2942cf39ae -->
 # Tribune Desk CMS API: przewodnik integracji
 
 To API łączy system zarządzania treścią (CMS) z Tribune Desk, narzędziem redakcyjnym, które pisze artykuły. Twój CMS odbiera artykuły wysłane przez redaktorów, informuje Tribune Desk, gdzie zostały opublikowane, i może utrzymywać swoją bibliotekę mediów w synchronizacji. Klientem może być dowolny CMS; nic tutaj nie zakłada konkretnego produktu. Wtyczka Tribune Desk dla WordPress jest jedną z jego implementacji; nie potrzebujesz jej, żeby zbudować własną.
@@ -20,6 +20,17 @@ Każdy poziom działa bez wyższych. Zacznij od poziomu 1, który zajmuje dzień
 | [5. Archiwum](guide/5-archive.md) | wysyła starsze artykuły | planowane | linki do archiwum |
 
 Kontrakt opisuje [dokument OpenAPI](../openapi.json) (dostępny także pod `https://api.tribunedesk.com/v3/cms/openapi.json`). Jak zmieniają się wersje: [Wersjonowanie](VERSIONING.md). Co się zmieniło: [CHANGELOG](../CHANGELOG.md). Działający klienci w Pythonie: [poziom 1](../examples/python/level1_receiver.py) i [poziom 2](../examples/python/level2_link_back.py).
+
+## Zbuduj to z Claude
+
+Otwartoźródłowy plugin do Claude Code buduje i testuje integrację twojego CMS na wybranych przez ciebie poziomach. Czyta ten przewodnik w otagowanej wersji, pyta, czego potrzebujesz, mówi, o co poprosić Tribune Desk, pisze kod i sprawdza go na lokalnej atrapie Tribune Desk, zanim przyjdzie pierwsza prawdziwa dostawa. Gdy kontrakt się zmieni, wypisuje, co musi się zmienić w twojej integracji, i ją aktualizuje.
+
+```
+/plugin marketplace add tribunedesk/tribunedesk-cms-kit
+/plugin install tribunedesk-integration@tribunedesk
+```
+
+Potem napisz: „Zbuduj mi integrację z Tribune Desk”. Plugin nie zamawia tokenów i niczego nie wdraża: konfiguracja po stronie Tribune Desk zostaje u twojej osoby kontaktowej (zobacz [O co poprosić Tribune Desk](#o-co-poprosić-tribune-desk)). W tym samym repozytorium, [tribunedesk/tribunedesk-cms-kit](https://github.com/tribunedesk/tribunedesk-cms-kit), jest `tdkit`: lokalna atrapa i testy zgodności, które uruchomisz także bez Claude. CMS napisany w PHP może korzystać z reguł protokołu z [tribunedesk/tribunedesk-cms-php](https://github.com/tribunedesk/tribunedesk-cms-php).
 
 ## Co działa dzisiaj
 
@@ -54,7 +65,7 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 ```
 
 ```
-{"org_code":"example-org","contract_version":"3.4.1-draft","scopes":["media:read"],"state":"active", ...}
+{"org_code":"example-org","contract_version":"3.4.2-draft","scopes":["media:read"],"state":"active", ...}
 ```
 
 ## O co poprosić Tribune Desk
