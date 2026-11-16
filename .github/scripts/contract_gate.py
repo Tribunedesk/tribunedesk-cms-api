@@ -20,10 +20,23 @@ repository, only when the minor changes.
 
 from __future__ import annotations
 
+import argparse
+import io
+import json
+import os
 import re
+import subprocess
+import sys
+import tarfile
+import tempfile
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 CONTRACT_PATHS = ("openapi.json", "CHANGELOG.md", "guide", "examples")
+KIT_URL = "https://github.com/Tribunedesk/tribunedesk-cms-kit"
+KIT_DOCS = "src/tdkit/docs.py"
+_KIT_TAG = re.compile(r"refs/tags/(v(\d+)\.(\d+)\.(\d+))$")
 
 _VERSION = re.compile(r"v?(\d+)\.(\d+)\.(\d+)(-draft)?")
 _MINORS_LINE = re.compile(r"^SUPPORTED_MINORS = frozenset\(\{((?:\(\d+, \d+\)(?:, )?)+)\}\)$", re.M)
@@ -87,7 +100,7 @@ def changelog_problems(changelog: str, version: str) -> list[str]:
             break
         section.append(line)
     if "**Integrators:**" not in (line.strip() for line in section):
-        return [f"CHANGELOG.md {version} has no `**Integrators:**` list (\"Nothing to do.\" counts)"]
+        return [f'CHANGELOG.md {version} has no `**Integrators:**` list ("Nothing to do." counts)']
     after = section[[line.strip() for line in section].index("**Integrators:**") + 1 :]
     if not any(line.startswith("- ") for line in after):
         return [f"CHANGELOG.md {version}: the `**Integrators:**` list is empty"]
@@ -104,3 +117,150 @@ def parse_supported_minors(docs_py: str) -> frozenset[tuple[int, int]]:
         )
     pairs = re.findall(r"\((\d+), (\d+)\)", match[1])
     return frozenset((int(a), int(b)) for a, b in pairs)
+
+
+@dataclass(frozen=True)
+class Decision:
+    """`tag` is set only when the contract changed and nothing is wrong."""
+
+    tag: str | None
+    problems: list[str]
+
+
+KitMinors = Callable[[], tuple[str, frozenset[tuple[int, int]]]]
+
+
+def read_version(root: Path) -> str:
+    """`info.version` of `root/openapi.json`; `ValueError` when it cannot be read."""
+    try:
+        version = json.loads((root / "openapi.json").read_text(encoding="utf-8"))["info"]["version"]
+        version_key(version)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise ValueError(f"openapi.json: cannot read info.version ({exc})") from exc
+    return version
+
+
+def decide(head: Path, base: Path, base_tag: str, kit: KitMinors) -> Decision:
+    """May the contract files of `head` become a new tag after `base` (the tree of `base_tag`)?
+
+    `kit` returns the newest tdkit tag and its `SUPPORTED_MINORS`; it is called only when the
+    major or minor changes.
+    """
+    if contract_files(head) == contract_files(base):
+        return Decision(None, [])
+    try:
+        version = read_version(head)
+    except ValueError as exc:
+        return Decision(None, [str(exc)])
+    new, old = version_key(version), version_key(base_tag)
+    if new <= old:
+        return Decision(
+            None,
+            [
+                f"contract files changed without a new version: info.version {version} "
+                f"is not newer than {base_tag}"
+            ],
+        )
+    problems = changelog_problems((head / "CHANGELOG.md").read_text(encoding="utf-8"), version)
+    if new[:2] == old[:2] and done_when_points(head) != done_when_points(base):
+        problems.append(
+            f'the "Done when" points differ from {base_tag}: a new requirement, '
+            f"bump at least the minor (info.version is {version})"
+        )
+    if new[:2] != old[:2]:
+        wanted = f"{new[0]}.{new[1]}"
+        try:
+            kit_tag, minors = kit()
+        except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+            problems.append(f"cannot check that tdkit knows {wanted}: {exc}")
+        else:
+            if new[:2] not in minors:
+                known = ", ".join(f"{a}.{b}" for a, b in sorted(minors))
+                problems.append(
+                    f"release tdkit that knows {wanted} first "
+                    f"(tdkit {kit_tag} supports {known}; SUPPORTED_MINORS in {KIT_DOCS})"
+                )
+    return Decision(None if problems else f"v{version}", problems)
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    ).stdout
+
+
+def export_tag(repo: Path, tag: str, dest: Path) -> None:
+    """Write the contract files of `tag` to `dest`."""
+    present = set(_git(repo, "ls-tree", "--name-only", tag).split())
+    paths = [p for p in CONTRACT_PATHS if p in present]
+    if not paths:
+        return
+    archive = subprocess.run(
+        ["git", "-C", str(repo), "archive", "--format=tar", tag, "--", *paths],
+        check=True,
+        capture_output=True,
+    ).stdout
+    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+        tar.extractall(dest, filter="data")
+
+
+def kit_minors() -> tuple[str, frozenset[tuple[int, int]]]:
+    """The newest tdkit tag and the `SUPPORTED_MINORS` of its `src/tdkit/docs.py`."""
+    refs = subprocess.run(
+        ["git", "ls-remote", "--tags", "--refs", KIT_URL],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    ).stdout
+    tags = [m for m in (_KIT_TAG.search(line.strip()) for line in refs.splitlines()) if m]
+    if not tags:
+        raise ValueError(f"no vX.Y.Z tag in {KIT_URL}")
+    newest = max(tags, key=lambda m: (int(m[2]), int(m[3]), int(m[4])))[1]
+    with tempfile.TemporaryDirectory() as tmp:
+        subprocess.run(
+            ["git", "clone", "--quiet", "--depth", "1", "--branch", newest, KIT_URL, tmp],
+            check=True,
+            capture_output=True,
+        )
+        text = (Path(tmp) / KIT_DOCS).read_text(encoding="utf-8")
+    return newest, parse_supported_minors(text)
+
+
+def _output(tag: str | None) -> None:
+    path = os.environ.get("GITHUB_OUTPUT")
+    if path:
+        with Path(path).open("a", encoding="utf-8") as out:
+            out.write(f"tag={tag or ''}\n")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Gate of the contract tag (spec D2a, D2c).")
+    parser.add_argument("--repo", type=Path, default=Path.cwd(), help="checkout to check")
+    args = parser.parse_args(argv)
+    repo: Path = args.repo.resolve()
+    base_tag = latest_tag(_git(repo, "tag", "--list", "v*").split())
+    if base_tag is None:
+        print("::error::no v* tag in this repository", file=sys.stderr)
+        return 1
+    with tempfile.TemporaryDirectory() as tmp:
+        export_tag(repo, base_tag, Path(tmp))
+        decision = decide(repo, Path(tmp), base_tag, kit_minors)
+    for problem in decision.problems:
+        print(f"::error::{problem}", file=sys.stderr)
+    if decision.problems:
+        return 1
+    if decision.tag:
+        print(f"Contract changed since {base_tag}: tag {decision.tag}.")
+    else:
+        print(f"No contract change since {base_tag}: no tag.")
+    _output(decision.tag)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
