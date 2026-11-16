@@ -1,0 +1,46 @@
+name: contract-tag
+
+# Spec 2026-11-13 "kontrakt najpierw" (Tribunedesk/tribunedesk-cms-kit), D2a and D2c: on every
+# push to main, run the same gate as pr.yml; when the contract changed and the gate passes, set
+# the annotated tag v<info.version> on this commit. Only this workflow sets contract tags.
+#
+# Red because tdkit does not know the new minor yet? Release tdkit, then "Run workflow" here:
+# the gate reads the newest tdkit tag again and the tag lands on the same commit.
+# A tag pushed with GITHUB_TOKEN starts no workflow; consumers find it through their daily
+# contract-drift runs (spec D2b).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: contract-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    # A manual run from another branch must not tag that branch.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Contract gate
+        id: gate
+        run: python3 .github/scripts/contract_gate.py
+      - name: Set the tag
+        if: steps.gate.outputs.tag != ''
+        env:
+          TAG: ${{ steps.gate.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Contract $TAG"
+          git push origin "refs/tags/$TAG"
+          echo "Tagged $TAG at $(git rev-parse --short HEAD)."

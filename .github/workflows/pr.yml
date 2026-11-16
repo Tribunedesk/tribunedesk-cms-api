@@ -1,0 +1,32 @@
+name: contract-check
+
+# Spec 2026-11-13 "kontrakt najpierw" (Tribunedesk/tribunedesk-cms-kit,
+# docs/specs/2026-11-13-kontrakt-najpierw-automaty-design.md), D2a and D2c: a pull request to
+# main that changes the contract (openapi.json, CHANGELOG.md, guide/, examples/) needs a newer
+# info.version, a CHANGELOG heading with an **Integrators:** list, at least a new minor when the
+# "Done when" points change, and a tdkit release that knows a new minor. tag.yml repeats the same
+# check before it sets the tag, so merging a red pull request sets no tag.
+#
+# The docs sync of headlinesforge opens its pull request (sync/latest) with a personal token, so
+# this workflow runs on it. Everything here lives under .github/: that sync deletes every other
+# file it does not publish.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Tests of the gate
+        run: python3 -m unittest discover -s .github/scripts -v
+      - name: Contract gate
+        run: python3 .github/scripts/contract_gate.py
