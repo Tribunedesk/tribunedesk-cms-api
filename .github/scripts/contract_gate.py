@@ -102,7 +102,10 @@ def changelog_problems(changelog: str, version: str) -> list[str]:
     if "**Integrators:**" not in (line.strip() for line in section):
         return [f'CHANGELOG.md {version} has no `**Integrators:**` list ("Nothing to do." counts)']
     after = section[[line.strip() for line in section].index("**Integrators:**") + 1 :]
-    if not any(line.startswith("- ") for line in after):
+    # The list is the bullets right under the line; blank lines before it are allowed, and any
+    # other line (a paragraph, a `### ` heading) ends it.
+    first = next((line for line in after if line.strip()), "")
+    if not first.startswith("- "):
         return [f"CHANGELOG.md {version}: the `**Integrators:**` list is empty"]
     return []
 
@@ -134,7 +137,8 @@ def read_version(root: Path) -> str:
     """`info.version` of `root/openapi.json`; `ValueError` when it cannot be read."""
     try:
         version = json.loads((root / "openapi.json").read_text(encoding="utf-8"))["info"]["version"]
-        version_key(version)
+        if not re.fullmatch(r"\d+\.\d+\.\d+(-draft)?", version):
+            raise ValueError(f"{version!r} is not X.Y.Z or X.Y.Z-draft")
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise ValueError(f"openapi.json: cannot read info.version ({exc})") from exc
     return version

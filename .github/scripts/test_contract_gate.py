@@ -100,6 +100,14 @@ class Rules(unittest.TestCase):
         tagged = changelog("3.5.0-draft", "- `L3`: filter embeds.")
         self.assertEqual(gate.changelog_problems(tagged, "3.5.0-draft"), [])
 
+    def test_changelog_integrators_list_must_follow_the_line(self) -> None:
+        later_bullets = (
+            "## 3.5.0-draft – 2026-11-16\n\n**Integrators:**\n\nNone yet.\n\n- Added endpoint.\n"
+        )
+        self.assertEqual(len(gate.changelog_problems(later_bullets, "3.5.0-draft")), 1)
+        subsection = "## 3.5.0-draft\n\n**Integrators:**\n\n### Notes\n\n- unrelated\n"
+        self.assertEqual(len(gate.changelog_problems(subsection, "3.5.0-draft")), 1)
+
     def test_parse_supported_minors_reads_the_kit_line(self) -> None:
         self.assertEqual(gate.parse_supported_minors(KIT_LINE_1_3_0), frozenset({(3, 4)}))
         two = "SUPPORTED_MINORS = frozenset({(3, 4), (3, 5)})\n"
@@ -178,6 +186,12 @@ class Decide(unittest.TestCase):
         decision = self.decide()
         self.assertIsNone(decision.tag)
         self.assertTrue(any("not newer than v3.4.2-draft" in p for p in decision.problems))
+
+    def test_decide_version_with_v_prefix_is_a_problem(self) -> None:
+        write_contract(self.head, "v3.4.3-draft", log=changelog("v3.4.3-draft"))
+        decision = self.decide()
+        self.assertIsNone(decision.tag)
+        self.assertTrue(any("cannot read info.version" in p for p in decision.problems))
 
     def test_decide_bad_changelog_is_a_problem(self) -> None:
         write_contract(self.head, "3.4.3-draft", log=changelog("3.4.2-draft"))
