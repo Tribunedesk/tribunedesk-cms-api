@@ -2,6 +2,14 @@
 
 Changes of the Tribune Desk CMS API contract, newest first. Versions follow [Versioning](VERSIONING.md).
 
+## 3.5.1-draft – 2026-11-17
+
+- `examples/python/level1_receiver.py` keeps embeds only from trusted players and removes other scripts, as guide 1 asks since 3.5.0-draft.
+
+**Integrators:**
+
+- Nothing to do.
+
 ## 3.5.0-draft – 2026-11-17
 
 - Guide 1: which embeds to keep in `html`, and that a delivery arrives with no editor logged in.
