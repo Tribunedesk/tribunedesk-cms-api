@@ -22,6 +22,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import time
 from collections.abc import Mapping
 from datetime import datetime
@@ -101,6 +102,22 @@ def verify_signature(
     raise InvalidSignature("no signature matches")
 
 
+# Players whose embeds stay (guide 1, "The HTML body", Embeds). Each prefix ends with "/", so a
+# look-alike host such as www.youtube.com.example.net does not pass.
+TRUSTED_PLAYERS = ("https://www.youtube.com/embed/", "https://player.vimeo.com/video/")
+_SCRIPT = re.compile(r"<script\b([^>]*)>.*?</script>", re.S | re.I)
+_IFRAME = re.compile(r"<iframe\b[^>]*\bsrc=[\"']([^\"']*)[\"'][^>]*>.*?</iframe>", re.S | re.I)
+
+
+def filter_embeds(html: str) -> str:
+    """Drop every `script` with its content, except the AI label block, and every `iframe`
+    whose `src` is not a trusted player. Run it on every delivery: a delivery arrives with no
+    editor logged in, so a filter that depends on the current user's rights may treat it
+    differently from the editor's own posts."""
+    html = _SCRIPT.sub(lambda m: m.group(0) if "data-hf-provenance" in m.group(1) else "", html)
+    return _IFRAME.sub(lambda m: m.group(0) if m.group(1).startswith(TRUSTED_PLAYERS) else "", html)
+
+
 def handle_delivery(
     body: bytes,
     headers: Mapping[str, str],
@@ -131,7 +148,7 @@ def handle_delivery(
         "cms_post_id": post_id,
         "sent_at": sent_at,
         "title": article["title"],
-        "html": article["html"],
+        "html": filter_embeds(article["html"]),
         "excerpt": article.get("excerpt"),
         "featured_image_url": (article.get("featured_image") or {}).get("url"),
         "state": "draft",
