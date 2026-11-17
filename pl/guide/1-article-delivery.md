@@ -1,4 +1,4 @@
-<!-- translated-from: guide/1-article-delivery.md sha256:d801ca930a0fd790 -->
+<!-- translated-from: guide/1-article-delivery.md sha256:c4e43f79d26f6c22 -->
 # Poziom 1 – Dostawa artykułu
 
 ## Webhook dostawy artykułu
@@ -90,6 +90,7 @@ Pola oznaczone jako pomijane są nieobecne w treści, a nie `null`, gdy nie maj�
 - **Typowe elementy:** `h2`, `h3`, `p`, `strong`, `b`, `em`, `i`, `br`, `ul`, `ol`, `li`, `blockquote` i `a`. Nagłówka nie ma w `html`: jest w `title`.
 - **Linki:** `<a href="…">`; gdy redakcja otwiera linki w nowej karcie, `target="_blank" rel="noopener"`; link sponsorowany ma `rel="sponsored"`. Linki do innych artykułów redakcji opisuje poziom 3.
 - **Bez mediów w treści:** Tribune Desk nie wstawia do `html` elementów `img`, `figure` ani `iframe`; obrazy przychodzą jako `featured_image` i `generated_images`. Redaktor może jednak wkleić embed ręcznie.
+- **Embedy:** zostaw `iframe` tylko wtedy, gdy jego `src` zaczyna się od adresu odtwarzacza wideo lub serwisu społecznościowego, któremu ufasz (wtyczka WordPress zostawia odtwarzacze YouTube, Vimeo, X, Instagrama, TikToka i Facebooka), i zostaw w nim tylko `src`, `width`, `height`, `frameborder`, `allowfullscreen`, `allow` i `title`. Usuń każdy inny `iframe` i każdy inny `script` razem z zawartością (blok etykiety AI niżej to jedyny skrypt, który możesz zostawić). Dostawa przychodzi bez zalogowanego redaktora: jeśli twój CMS filtruje treść według uprawnień bieżącego użytkownika, sprawdź, czy ten filtr zostawia embedy, którym ufasz.
 - **Blok etykiety AI:** gdy redakcja oznacza treści AI, `html` kończy się blokiem `<script type="application/ld+json" data-hf-provenance>…</script>`, tym samym oświadczeniem co `ai_provenance` (zob. poziom 3). Zostaw go, jeśli twój CMS na to pozwala, albo usuń i wstaw `ai_provenance` do nagłówka strony.
 
 ## Pola twojej odpowiedzi
@@ -124,6 +125,7 @@ Działający odbiornik w Pythonie, bez zależności, znajdziesz w [`examples/pyt
 - Próba starszej wysyłki, która dotrze po nowszej, nie nadpisuje wpisu.
 - Dwie nakładające się próby jednej wysyłki tworzą jeden wpis, nie dwa.
 - Obrazy są pobierane tylko z hostów z `image_hosts`; obraz z innego hosta nie jest pobierany.
+- `script` w `html` inny niż blok etykiety AI jest usuwany razem z zawartością; `iframe` odtwarzacza YouTube zostaje, a `iframe` z hosta, któremu nie ufasz, jest usuwany.
 
 W trybie odczytu dodatkowo:
 
