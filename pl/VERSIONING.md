@@ -1,7 +1,7 @@
-<!-- translated-from: VERSIONING.md sha256:e0e7493e9e70ed8b -->
+<!-- translated-from: VERSIONING.md sha256:c3a38aa55e2164e0 -->
 # Wersjonowanie
 
-> Kontrakt jest **wersją roboczą** (`3.4.2-draft`) i może się zmieniać, dopóki nie zostanie ogłoszony jako stabilny. Nie obiecujemy żadnych dat.
+> Kontrakt jest **wersją roboczą** (`3.5.0-draft`) i może się zmieniać, dopóki nie zostanie ogłoszony jako stabilny. Nie obiecujemy żadnych dat.
 
 Wersja kontraktu to `info.version` w dokumencie OpenAPI i `contract_version` w `GET /v3/cms/status`. Jest zgodna z wersjonowaniem semantycznym:
 

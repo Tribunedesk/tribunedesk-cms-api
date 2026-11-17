@@ -1,4 +1,4 @@
-<!-- translated-from: guide/4-media-library.md sha256:0dee2d0af22093f4 -->
+<!-- translated-from: guide/4-media-library.md sha256:8ac4e6f8a9349446 -->
 # Poziom 4 – Biblioteka mediów
 
 ## Cykl synchronizacji
@@ -79,6 +79,8 @@ Plik jest dopasowywany po `cms_media_id`. Plik nieznany, przeniesiony do kosza a
 ## Wysyłanie nowych plików
 
 `POST /v3/cms/media` przyjmuje do 100 elementów. Każdy wymaga `cms_media_id`, publicznie dostępnego `file_url`, `width`, `height` i `mime_type`; schemat oznacza trzy ostatnie jako opcjonalne, ale element bez nich jest `rejected` z powodem `missing_metadata`. Opcjonalne są `sha256` (przyjmowane, nieużywane: import liczy własne), `created_at`, `credit`, `post_title`, `iptc_caption`, `iptc_title` i początkowe `fields`. Każda inna właściwość daje `422`. Tribune Desk pobiera plik później, we własnym tempie, w granicach dziennego limitu opisywania nowych plików.
+
+Wysyłaj tylko pliki dodane po włączeniu poziomu 4. Pliki, które już były w twojej bibliotece, trafiają do Tribune Desk importem historycznym (zob. Import historyczny), a nie jako nowe pliki: cała biblioteka wysłana naraz zużyłaby dzienny limit opisywania nowych plików.
 
 - **Identyfikatory są twoje.** `cms_media_id` to dowolny tekst o długości od 1 do 255 znaków, tutaj i na każdej trasie. Unikalny w obrębie twojej organizacji.
 - Dla każdego elementu: `ok` przyjęty, `known` już otrzymany albo `rejected` z powodem: `missing_metadata`; `new_files_disabled`; `before_since` i `below_min_width` (filtry poniżej; `before_since` wymaga `created_at`); `host` (patrz Dozwolone hosty plików); `too_small` (poniżej 800 pikseli szerokości; wysokość się nie liczy); `mime` (inny niż `image/jpeg`, `image/png`, `image/webp`); albo `excluded_agency` (`credit` lub, gdy `credit` jest puste, pole `caption` wskazuje agencję wykluczoną na mocy umowy twojej organizacji; nie ma publicznej listy, a większość organizacji nie ma takiej reguły).
@@ -174,6 +176,7 @@ Prośba zamyka się po ostatniej stronie, a także gdy tylko osiągnie `max_file
 
 - Twój CMS odpytuje `GET /v3/cms/changes` i zapisuje kursor dopiero po zastosowaniu zwróconych zmian.
 - Nowe pliki, zmiany pól i usunięcia po twojej stronie docierają do Tribune Desk, a powtórzone żądanie nie tworzy duplikatów.
+- Pliki, które były w twojej bibliotece przed włączeniem poziomu 4, nie są wysyłane jako nowe pliki.
 - Wynik pola `conflict` (w odpowiedzi `200`) rozwiązuje się przez przyjęcie `winning_value`, a nie przez ponowne wysłanie swojej wartości.
 - Wygasły kursor (`410`) prowadzi do resynchronizacji, a nie do nowego startu od teraz.
 - Wstrzymane partie są pokazywane człowiekowi, który o nich decyduje.
