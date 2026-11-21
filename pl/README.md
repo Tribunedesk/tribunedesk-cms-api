@@ -1,4 +1,4 @@
-<!-- translated-from: README.md sha256:71a7736a32fea3b4 -->
+<!-- translated-from: README.md sha256:94b7e28d102bdfdc -->
 # Tribune Desk CMS API: przewodnik integracji
 
 To API łączy system zarządzania treścią (CMS) z Tribune Desk, narzędziem redakcyjnym, które pisze artykuły. Twój CMS odbiera artykuły wysłane przez redaktorów, informuje Tribune Desk, gdzie zostały opublikowane, i może utrzymywać swoją bibliotekę mediów w synchronizacji. Klientem może być dowolny CMS; nic tutaj nie zakłada konkretnego produktu. Wtyczka Tribune Desk dla WordPress jest jedną z jego implementacji; nie potrzebujesz jej, żeby zbudować własną.
@@ -65,7 +65,7 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 ```
 
 ```
-{"org_code":"example-org","contract_version":"3.5.1-draft","scopes":["media:read"],"state":"active", ...}
+{"org_code":"example-org","contract_version":"3.6.0-draft","scopes":["media:read"],"state":"active", ...}
 ```
 
 ## O co poprosić Tribune Desk
@@ -110,14 +110,14 @@ Jeden token może mieć wszystkie potrzebne zakresy; poproś o jeden token na or
 
 - Ponawiaj przy `429`, `500`, `503`, błędach sieci oraz przy `502` i `504`, którymi bramka może odpowiedzieć bez naszego body JSON: odczekaj co najmniej `retry_after` sekund, a potem wydłużaj odstępy wykładniczo z losowym rozrzutem (jitter). Nasz nagłówek `Retry-After` zawiera tę samą całkowitą liczbę sekund co `retry_after`; bramka może wysłać go jako datę.
 - Nie ponawiaj innych błędów `4xx` bez zmian: najpierw popraw żądanie albo stan.
-- Dbaj o idempotentność ponowień: zapisuj kursor dopiero po zastosowaniu jego zmian, a własne rekordy kluczuj identyfikatorami z żądania (`cms_media_id`), żeby powtórzenie partii nie tworzyło duplikatów. Powtórzony plik odpowiada `known`, a powtórzona zmiana pola `unchanged`.
+- Dbaj o idempotentność ponowień: zapisuj kursor dopiero po zastosowaniu jego zmian, a własne rekordy kluczuj identyfikatorami z żądania (`cms_media_id`), żeby powtórzenie partii nie tworzyło duplikatów. Powtórzony plik odpowiada `known` (albo `rejected`, gdy import go odrzucił), a powtórzona zmiana pola `unchanged`.
 - Jeśli Twój proces padł przed zapisaniem kursora, odpytaj ponownie ze starym kursorem i zastosuj zmiany jeszcze raz.
 
 Każdą trasę można bezpiecznie powtórzyć po utraconej odpowiedzi. Co daje powtórzenie:
 
 | Trasa | Odpowiedź na powtórzenie |
 |---|---|
-| `POST /media` | `known`. |
+| `POST /media` | `known` albo `rejected` z powodem importu dla pliku, który import odrzucił. |
 | `POST /media/fields` | `unchanged` dla zastosowanych wartości; wartości oczekujące zostają w swojej partii. |
 | `POST /media/{asset_id}/link` | `known`. |
 | `POST /media/deletions` | `known`. |
