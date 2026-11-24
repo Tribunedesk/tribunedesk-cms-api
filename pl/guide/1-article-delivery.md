@@ -1,4 +1,4 @@
-<!-- translated-from: guide/1-article-delivery.md sha256:c4e43f79d26f6c22 -->
+<!-- translated-from: guide/1-article-delivery.md sha256:4a4e227834a4c054 -->
 # Poziom 1 – Dostawa artykułu
 
 ## Webhook dostawy artykułu
@@ -21,6 +21,8 @@ To jedyne wywołanie, które Tribune Desk kieruje do ciebie: gdy redaktor klikni
 **Kolejność wysyłek.** Nowsza wysyłka tego samego artykułu anuluje czekające ponowienia starszej, a każda próba niesie bieżący stan artykułu. Próba starszej wysyłki, która była już w drodze, może jednak dotrzeć po nowszej: zapamiętuj ostatnio zastosowane `sent_at` dla każdego `article_id` i pomijaj treść ze starszym `sent_at`. `sent_at` to chwila, w której redaktor wysłał artykuł, ta sama w każdej próbie tej wysyłki; czas samej próby to `webhook-timestamp`.
 
 **Zapisuj pod unikalnym kluczem.** Dwie próby jednej wysyłki mogą na siebie zachodzić (Tribune Desk przestaje czekać po 30 sekundach i ponawia później, choć twoja pierwsza odpowiedź jeszcze powstaje). Trzymaj `article_id` jako unikalny w bazie i blokuj wiersz na czas zapisu, inaczej powstaną dwa wpisy.
+
+**Tryb publikacji.** Redaktor może wybrać, jak wpis zostanie opublikowany: opcjonalne pole `publication` niesie `mode` `draft` (zostaw nieopublikowany), `publish` (opublikuj teraz) albo `schedule` (opublikuj o `at`, ISO 8601 w UTC). Bez tego pola publikuj tak, jak twój CMS robi to dziś. Wpis zaplanowany nie jest jeszcze publiczny, więc kolejna wysyłka tego samego artykułu aktualizuje go jak szkic i może przenieść go na inną godzinę, cofnąć do szkicu albo opublikować od razu. Nigdy nie cofaj publikacji już opublikowanego wpisu z powodu tego pola. `schedule`, którego `at` minął, zanim dostawa do ciebie dotarła, publikujesz od razu; Tribune Desk sam zamienia spóźnioną wysyłkę na `draft`, zanim ją wyśle, więc to rzadkie. Odpowiedz polem `publication` (niżej), żeby redaktor widział, co naprawdę się stało.
 
 **Poziomy.** Nie potrzebujesz wszystkich pól, a każdy poziom działa bez tych powyżej. Poziom 1 (odbiór artykułu) tworzy szkic wpisu z `title`, `html`, `excerpt` i `featured_image`. Poziom 2 (link zwrotny) informuje Tribune Desk, gdzie wpis został opublikowany, aby inne artykuły mogły do niego linkować: odpowiedz z `permalink`. Poziom 3 (pełna treść) korzysta z tych samych dostaw z większą liczbą pól: linki wewnętrzne i boks „Czytaj więcej”, SEO, autor, pochodzenie AI. Poziom 4 (biblioteka mediów) ponownie wykorzystuje pliki, które twój CMS już przechowuje. Pola oznaczone jako *opcjonalne* to dodatki redakcyjne (wpisy do mediów społecznościowych, alternatywne tytuły, fakty), z których możesz skorzystać albo je pominąć. Nowe pola mogą pojawić się w wersji minor, więc ignoruj te, których nie znasz.
 
@@ -89,7 +91,7 @@ Pola oznaczone jako pomijane są nieobecne w treści, a nie `null`, gdy nie maj�
 
 - **Typowe elementy:** `h2`, `h3`, `p`, `strong`, `b`, `em`, `i`, `br`, `ul`, `ol`, `li`, `blockquote` i `a`. Nagłówka nie ma w `html`: jest w `title`.
 - **Linki:** `<a href="…">`; gdy redakcja otwiera linki w nowej karcie, `target="_blank" rel="noopener"`; link sponsorowany ma `rel="sponsored"`. Linki do innych artykułów redakcji opisuje poziom 3.
-- **Bez mediów w treści:** Tribune Desk nie wstawia do `html` elementów `img`, `figure` ani `iframe`; obrazy przychodzą jako `featured_image` i `generated_images`. Redaktor może jednak wkleić embed ręcznie.
+- **Zdjęcia w treści:** `html` może zawierać `figure`, która zwykle ma jeden `<img src alt>` i opcjonalny `figcaption`; `src` to publiczny adres, a `figure` może nieść jedną z klas `alignleft`, `alignright`, `aligncenter` i `alignwide`. Zdjęcie z biblioteki ma na `img` atrybut `data-td-asset-id` (id pliku z poziomu 4) i, gdy plik pochodzi z twojego CMS, `data-td-cms-media-id` (twoje id pliku, takie samo jak `cms_media_id`). Zostaw `figure` i `img` w filtrze treści razem z atrybutami `data-td-*` na `img`: sanitizer, który usuwa nieznane atrybuty `data-*`, psuje poziom 4. Użyj ich, żeby wstawić natywne zdjęcie twojego CMS zamiast pobierać plik, tak by nowa wysyłka tego samego artykułu nie robiła jego drugiej kopii; bez nich zostaw `figure` bez zmian albo pobierz plik tylko z `image_hosts`. Tribune Desk nie wstawia do `html` elementu `iframe`, ale redaktor może wkleić embed ręcznie.
 - **Embedy:** zostaw `iframe` tylko wtedy, gdy jego `src` zaczyna się od adresu odtwarzacza wideo lub serwisu społecznościowego, któremu ufasz (wtyczka WordPress zostawia odtwarzacze YouTube, Vimeo, X, Instagrama, TikToka i Facebooka), i zostaw w nim tylko `src`, `width`, `height`, `frameborder`, `allowfullscreen`, `allow` i `title`. Usuń każdy inny `iframe` i każdy inny `script` razem z zawartością (blok etykiety AI niżej to jedyny skrypt, który możesz zostawić). Dostawa przychodzi bez zalogowanego redaktora: jeśli twój CMS filtruje treść według uprawnień bieżącego użytkownika, sprawdź, czy ten filtr zostawia embedy, którym ufasz.
 - **Blok etykiety AI:** gdy redakcja oznacza treści AI, `html` kończy się blokiem `<script type="application/ld+json" data-hf-provenance>…</script>`, tym samym oświadczeniem co `ai_provenance` (zob. poziom 3). Zostaw go, jeśli twój CMS na to pozwala, albo usuń i wstaw `ai_provenance` do nagłówka strony.
 
@@ -105,6 +107,7 @@ Treść twojej odpowiedzi (`ArticleDeliveryResult`) jest opcjonalna: sam `2xx` o
 | `permalink` | 2 | Publiczny adres wpisu. Tribune Desk używa go do linkowania do tego artykułu z innych artykułów. |
 | `featured_image` | 4 | Załącznik utworzony z obrazu głównego, aby Tribune Desk mógł go następnym razem użyć ponownie. |
 | `social_queue_exclude` | 2 | `true` trzyma wpis z dala od kolejki Facebooka w Tribune Desk, `false` przywraca go; ta sama flaga co w linku zwrotnym. Wysyłaj ją razem z `permalink`, gdy publikujesz od razu, żeby oznaczony wpis nigdy nie trafił do kolejki. Pomiń ją, żeby zachować zapisaną wartość. |
+| `publication` | opcjonalne | Stan wpisu po tej dostawie: `status` `draft`, `scheduled` albo `published` oraz `at`, kiedy wpis jest albo był publikowany (UTC; null dla szkicu). Tribune Desk pokazuje go redaktorowi. Pomiń pole przy każdym innym stanie (np. wpis prywatny). |
 | `post_id` | – | Przestarzały (wycofywany): to samo co `cms_post_id`, odczytywany tylko wtedy, gdy tego brak. |
 
 ## Skąd pochodzą obrazy
@@ -126,6 +129,7 @@ Działający odbiornik w Pythonie, bez zależności, znajdziesz w [`examples/pyt
 - Dwie nakładające się próby jednej wysyłki tworzą jeden wpis, nie dwa.
 - Obrazy są pobierane tylko z hostów z `image_hosts`; obraz z innego hosta nie jest pobierany.
 - `script` w `html` inny niż blok etykiety AI jest usuwany razem z zawartością; `iframe` odtwarzacza YouTube zostaje, a `iframe` z hosta, któremu nie ufasz, jest usuwany.
+- Dostawa z `publication` tworzy szkic, wpis zaplanowany na `at` albo wpis opublikowany; zaplanowany przyjmuje kolejną wysyłkę jak szkic, a opublikowany nigdy nie wraca do szkicu. Twoja odpowiedź niesie `publication` ze stanem wynikowym.
 
 W trybie odczytu dodatkowo:
 
