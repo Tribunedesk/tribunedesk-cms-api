@@ -123,7 +123,6 @@
     }
   ],
   "publication": {
-    "mode": "schedule",
-    "at": "2026-11-05T07:00:00Z"
+    "mode": "draft"
   }
 }
