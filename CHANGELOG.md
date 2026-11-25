@@ -2,6 +2,15 @@
 
 Changes of the Tribune Desk CMS API contract, newest first. Versions follow [Versioning](VERSIONING.md).
 
+## 3.7.1-draft – 2026-11-25
+
+- `examples/python/level1_receiver.py` applies `publication` and answers with it, as guide 1 asks since 3.7.0-draft.
+- `examples/payloads/article-delivered.json` asks for a draft in `publication`; its scheduled time had passed, so a receiver tested on the sample published it at once.
+
+**Integrators:**
+
+- Nothing to do.
+
 ## 3.7.0-draft – 2026-11-24
 
 - `ArticleDelivery` has an optional `publication` (`mode` `draft`, `schedule` with `at`, or `publish`): how the editor wants the post published. Without it, nothing changes.

@@ -25,7 +25,7 @@ import os
 import re
 import time
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 SECRET_PREFIX = "whsec_"
@@ -118,6 +118,30 @@ def filter_embeds(html: str) -> str:
     return _IFRAME.sub(lambda m: m.group(0) if m.group(1).startswith(TRUSTED_PLAYERS) else "", html)
 
 
+def publication_state(post: dict, publication: object, now: int) -> tuple[str, str | None]:
+    """The post's state after a delivery with `publication` (guide 1, "Publication mode").
+
+    `draft`, `scheduled` (until `at`) or `published`. A published post is never unpublished;
+    a time already past is published at once; a field that cannot be read is ignored, like any
+    field you do not know. Returns (state, at), `at` in UTC for a scheduled post.
+    """
+    state, at = post.get("state", "draft"), post.get("publish_at")
+    if state == "published" or not isinstance(publication, dict):
+        return state, at
+    mode = publication.get("mode")
+    if mode in ("draft", "publish"):
+        return ("draft" if mode == "draft" else "published"), None
+    try:
+        moment = datetime.fromisoformat(str(publication.get("at")).replace("Z", "+00:00"))
+    except ValueError:
+        return state, at
+    if mode != "schedule" or moment.tzinfo is None:
+        return state, at
+    if moment.timestamp() <= now:
+        return "published", None
+    return "scheduled", moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def handle_delivery(
     body: bytes,
     headers: Mapping[str, str],
@@ -144,6 +168,8 @@ def handle_delivery(
     if existing and sent_at < existing["sent_at"]:
         # An attempt of an older send that arrived after a newer one: keep the newer post.
         return {"cms_post_id": post_id, "status": "updated", "edit_url": edit_url}
+    current = int(time.time()) if now is None else now
+    state, publish_at = publication_state(existing or {}, article.get("publication"), current)
     store[article_id] = {
         "cms_post_id": post_id,
         "sent_at": sent_at,
@@ -151,13 +177,20 @@ def handle_delivery(
         "html": filter_embeds(article["html"]),
         "excerpt": article.get("excerpt"),
         "featured_image_url": (article.get("featured_image") or {}).get("url"),
-        "state": "draft",
+        # A scheduled post is published at `publish_at` by your CMS's own scheduler.
+        "state": state,
+        "publish_at": publish_at,
     }
     return {
         "cms_post_id": post_id,
         "status": "updated" if existing else "created",
-        "permalink": None,  # a draft has no public address yet; see level 2
+        "permalink": None,  # the public address is reported by level 2
         "edit_url": edit_url,
+        # The post's state after this delivery, so the editor sees what really happened.
+        "publication": {
+            "status": state,
+            "at": publish_at if state == "scheduled" else None,
+        },
     }
 
 
