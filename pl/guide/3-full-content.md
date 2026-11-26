@@ -1,4 +1,4 @@
-<!-- translated-from: guide/3-full-content.md sha256:f28c65682c504475 -->
+<!-- translated-from: guide/3-full-content.md sha256:d11e136d80f03fa1 -->
 # Poziom 3 – Pełna treść
 
 Poziom 3 korzysta z tych samych dostaw co poziom 1 i odczytuje więcej ich pól. Nic tutaj nie wymaga nowej trasy.
@@ -57,9 +57,20 @@ Każdy może sprawdzić oznaczenie bez tokenu, pod `https://api.tribunedesk.com`
 - `GET /.well-known/hf-provenance.json` zwraca klucz publiczny (JWK Set) do weryfikacji `jws` oraz informację, kto jest producentem;
 - `POST /v2/verify` z `{"text": "..."}` odpowiada, czy tekst pochodzi z Tribune Desk (`generated`), i podaje datę, kiedy pojawił się tam po raz pierwszy (`generated_at`). Nigdy nie mówi, która organizacja go wytworzyła. Wyślij treść artykułu: `html` w postaci dostarczonej albo jego czysty tekst, bez tytułu (`title` nie jest częścią `html`). Przed sprawdzeniem Tribune Desk usuwa tagi i bloki `<script>`, zamienia tekst na małe litery i scala białe znaki, więc znaczniki i blok pochodzenia nie mają znaczenia, ale każda zmiana w słowach już tak: zredagowany artykuł daje odpowiedź `generated: false`. Trasa przyjmuje 30 żądań na minutę z jednego adresu IP i powyżej tego odpowiada `429`; `503` oznacza chwilową niedostępność rejestru, więc spróbuj ponownie później.
 
+## Kategorie i tagi
+
+Jeśli twój CMS ma kategorie i tagi, wyślij je do Tribune Desk, żeby redaktor mógł z nich wybierać, a autor tekstu dobierać. Tribune Desk nigdy nie tworzy terminu w twoim CMS.
+
+Terminy wysyłasz przez `POST /v3/cms/taxonomy/terms` (wymaga `articles:write`), do 1000 w jednym żądaniu. Każda pozycja ma `taxonomy` (`category` lub `tag`), `cms_term_id` (twój identyfikator, jako tekst), `name` oraz opcjonalnie `slug`, `parent_id`, `post_count` i `deleted`. Przechodź po terminach w kolejności ich id i wysyłaj je raz na dobę jako pełny przebieg: ten sam `run_id` (UUID, który sam wymyślasz) na każdej stronie i `is_last: true` na ostatniej. Po tej stronie Tribune Desk usuwa terminy organizacji, których ten przebieg nie przysłał. Przebieg, który nie dochodzi do ostatniej strony, niczego nie usuwa (ostatnia strona może nie mieć pozycji, gdy twój CMS nie ma już terminów); przebieg otwarty ponad 24 godziny jest odrzucany (`409`). Prowadź jeden pełny przebieg naraz; strona z nowym `run_id` porzuca poprzedni przebieg. Pojedyncze zmiany wysyłaj na bieżąco bez `run_id`: nowy lub przemianowany termin jako pozycję, usunięty z `deleted: true`. `GET /v3/cms/status` pokazuje `taxonomy` (`terms` i `last_full_sync_at`).
+
+Dostawa może mieć `taxonomy` z `categories` i `tags`, każde to lista `{cms_term_id, name}`. Klucz obecny znaczy: ustaw dokładnie te terminy (pusta lista usuwa wszystkie; CMS wraca wtedy do kategorii domyślnej); klucz nieobecny znaczy: nie ruszaj tej taksonomii; brak `taxonomy` znaczy to samo dla obu. Termin znajdź po `cms_term_id`, a gdy twój CMS nie zna id, po `name`, bez rozróżniania wielkości liter. Nigdy nie twórz terminu. Zmieniaj terminy tylko wpisu nowego, szkicu, oczekującego lub zaplanowanego; opublikowany zostaw.
+
+Odpowiedz polem `taxonomy`: `categories` i `tags`, które są teraz przy wpisie, oraz `ignored`, czyli terminy, których nie ustawiłeś, każdy z `name` i `reason` (`unknown_term`, gdy takiego terminu nie ma, `wrong_taxonomy`, gdy jest w drugiej taksonomii; mogą dojść nowe powody, więc Tribune Desk przyjmuje każdy niepusty tekst).
+
 ## Gotowe, gdy
 
 - Zastępniki są zastępowane twoimi adresami albo tekst linku zostaje bez linku. Powrót do wcześniejszych wpisów, gdy artykuł docelowy zostanie opublikowany, jest opcjonalny.
 - Boks „Czytaj więcej” działa zgodnie z `backlink_sources`, łącznie z zasadami dla brakującego klucza i pustej listy.
 - Pola SEO, autor i język są zapisane przy wpisie.
 - Oznaczenie AI jest w `<head>` każdej publicznej strony utworzonej z dostawy, której `ai_provenance` nie jest `null`.
+- Kategorie i tagi: twój CMS wysyła terminy do `POST /v3/cms/taxonomy/terms`, ustawia terminy z `taxonomy` na nowym lub nieopublikowanym wpisie, nigdy nie tworzy terminu i odpowiada polem `taxonomy`.
