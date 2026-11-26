@@ -1,7 +1,7 @@
-<!-- translated-from: guide/3-full-content.md sha256:d11e136d80f03fa1 -->
+<!-- translated-from: guide/3-full-content.md sha256:9bd6fe779d5d6127 -->
 # Poziom 3 – Pełna treść
 
-Poziom 3 korzysta z tych samych dostaw co poziom 1 i odczytuje więcej ich pól. Nic tutaj nie wymaga nowej trasy.
+Poziom 3 korzysta z tych samych dostaw co poziom 1 i odczytuje więcej ich pól. Jedyna nowa trasa to `POST /v3/cms/taxonomy/terms`, która synchronizuje twoje kategorie i tagi (zob. [Kategorie i tagi](#kategorie-i-tagi)).
 
 ## Linki wewnętrzne
 
