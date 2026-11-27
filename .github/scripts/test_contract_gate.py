@@ -108,6 +108,13 @@ class Rules(unittest.TestCase):
         subsection = "## 3.5.0-draft\n\n**Integrators:**\n\n### Notes\n\n- unrelated\n"
         self.assertEqual(len(gate.changelog_problems(subsection, "3.5.0-draft")), 1)
 
+    def test_skipped_versions_are_the_headings_between_tags(self) -> None:
+        log = "# Changelog\n\n## 3.7.0-draft – x\n\n## 3.6.1-draft – x\n\n## 3.6.0-draft – x\n"
+        self.assertEqual(
+            gate.skipped_versions(log, "v3.6.0-draft", "v3.7.0-draft"), ["3.6.1-draft"]
+        )
+        self.assertEqual(gate.skipped_versions(log, "v3.6.1-draft", "v3.7.0-draft"), [])
+
     def test_parse_supported_minors_reads_the_kit_line(self) -> None:
         self.assertEqual(gate.parse_supported_minors(KIT_LINE_1_3_0), frozenset({(3, 4)}))
         two = "SUPPORTED_MINORS = frozenset({(3, 4), (3, 5)})\n"
@@ -235,6 +242,17 @@ class Main(unittest.TestCase):
         git(self.repo, "commit", "-q", "-am", "3.4.3")
         self.assertEqual(gate.main(["--repo", str(self.repo)]), 0)
         self.assertIn("tag=v3.4.3-draft\n", self.output.read_text(encoding="utf-8"))
+        self.assertIn("skipped=\n", self.output.read_text(encoding="utf-8"))
+
+    def test_main_names_a_version_that_never_reached_main(self) -> None:
+        git(self.repo, "tag", "v3.4.2-draft")
+        log = changelog("3.4.4-draft").replace(
+            "## 3.4.2-draft", "## 3.4.3-draft – x\n\n**Integrators:**\n\n- No.\n\n## 3.4.2-draft"
+        )
+        write_contract(self.repo, "3.4.4-draft", log=log)
+        git(self.repo, "commit", "-q", "-am", "3.4.4")
+        self.assertEqual(gate.main(["--repo", str(self.repo)]), 0)
+        self.assertIn("skipped=3.4.3-draft\n", self.output.read_text(encoding="utf-8"))
 
     def test_main_no_change_writes_empty_tag(self) -> None:
         git(self.repo, "tag", "-a", "v3.4.2-draft", "-m", "Contract v3.4.2-draft")

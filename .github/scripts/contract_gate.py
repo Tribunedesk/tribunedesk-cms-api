@@ -110,6 +110,19 @@ def changelog_problems(changelog: str, version: str) -> list[str]:
     return []
 
 
+def skipped_versions(changelog: str, base_tag: str, version: str) -> list[str]:
+    """CHANGELOG headings newer than `base_tag` and older than `version`: versions that never
+    reached `main` on their own (the docs sync replaced them in its open pull request before it
+    was merged, 2026-11-25: 3.6.1-draft). Only `main` is tagged, so they get no tag."""
+    low, high = version_key(base_tag), version_key(version)
+    found = []
+    for line in changelog.replace("\r\n", "\n").splitlines():
+        match = re.match(r"^## (v?\d+\.\d+\.\d+(?:-draft)?)(\s|$)", line)
+        if match and low < version_key(match[1]) < high:
+            found.append(match[1])
+    return found
+
+
 def parse_supported_minors(docs_py: str) -> frozenset[tuple[int, int]]:
     """`SUPPORTED_MINORS` of tdkit's `src/tdkit/docs.py`; anything else is an error."""
     match = _MINORS_LINE.search(docs_py.replace("\r\n", "\n"))
@@ -235,11 +248,12 @@ def kit_minors() -> tuple[str, frozenset[tuple[int, int]]]:
     return newest, parse_supported_minors(text)
 
 
-def _output(tag: str | None) -> None:
+def _output(tag: str | None, skipped: list[str]) -> None:
     path = os.environ.get("GITHUB_OUTPUT")
     if path:
         with Path(path).open("a", encoding="utf-8") as out:
             out.write(f"tag={tag or ''}\n")
+            out.write(f"skipped={' '.join(skipped)}\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -258,11 +272,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"::error::{problem}", file=sys.stderr)
     if decision.problems:
         return 1
+    skipped: list[str] = []
     if decision.tag:
         print(f"Contract changed since {base_tag}: tag {decision.tag}.")
+        changelog = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
+        skipped = skipped_versions(changelog, base_tag, decision.tag)
+        if skipped:
+            print(
+                f"::warning::{', '.join(skipped)} never reached main on its own and gets no tag; "
+                f"its changes ship in {decision.tag}. Merge the docs sync pull request before "
+                "the next version replaces it."
+            )
     else:
         print(f"No contract change since {base_tag}: no tag.")
-    _output(decision.tag)
+    _output(decision.tag, skipped)
     return 0
 
 

@@ -34,13 +34,19 @@ jobs:
       - name: Contract gate
         id: gate
         run: python3 .github/scripts/contract_gate.py
+      # A version the docs sync replaced in its open pull request before the merge never was a
+      # commit of main, so it gets no tag (3.6.1-draft, 2026-11-25). The gate warns and the tag
+      # says which versions it carries, so a pin can name the tag that has them.
       - name: Set the tag
         if: steps.gate.outputs.tag != ''
         env:
           TAG: ${{ steps.gate.outputs.tag }}
+          SKIPPED: ${{ steps.gate.outputs.skipped }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "Contract $TAG"
+          message="Contract $TAG"
+          if [ -n "$SKIPPED" ]; then message="$message (also carries $SKIPPED, never tagged on its own)"; fi
+          git tag -a "$TAG" -m "$message"
           git push origin "refs/tags/$TAG"
           echo "Tagged $TAG at $(git rev-parse --short HEAD)."
