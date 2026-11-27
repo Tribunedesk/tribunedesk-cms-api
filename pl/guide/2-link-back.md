@@ -1,4 +1,4 @@
-<!-- translated-from: guide/2-link-back.md sha256:890cf96d20a652a5 -->
+<!-- translated-from: guide/2-link-back.md sha256:bb6825d2e20befb1 -->
 # Poziom 2 – Link zwrotny
 
 ## Zgłaszanie opublikowanego adresu
@@ -7,7 +7,7 @@ Gdy wpis utworzony z dostarczonego artykułu staje się publiczny, wywołaj `POS
 
 Odpowiedź na dostawę z `permalink` (i `social_queue_exclude`, niżej) robi to samo dla wpisu opublikowanego od razu; tej trasy używaj dla wpisów publikowanych później. Gdy wpis zostanie wycofany z publikacji, Tribune Desk zachowuje ostatni adres: dziś żadna trasa go nie cofa, więc wyślij nowy adres, gdy wpis wróci albo się przeniesie.
 
-**Gdy zgłoszenie się nie uda.** Zgłoszenie zakończone błędem sieci, `429` albo `5xx` jest wysyłane ponownie później (po `Retry-After`, jeśli jest); wtyczka WordPress próbuje jeszcze raz po 5 minutach. Wpisy, które były publiczne, zanim twoja integracja dostała token, są zgłaszane, gdy już go ma, do 100 na żądanie.
+**Gdy zgłoszenie się nie uda.** Zgłoszenie zakończone błędem sieci, `429` albo `5xx` jest wysyłane ponownie później (po `Retry-After`, jeśli jest, a bez niego po około 5 minutach), co najmniej raz, a lepiej kilka razy z rosnącym odstępem; tak samo zgłoszenia odłożone przy publikacji masowej. Kiedy zgłaszać i jak ponawiać: [Pełna integracja](complete-integration.md#zgłaszanie-adresów). Wpisy, które były publiczne, zanim twoja integracja dostała token, są zgłaszane, gdy już go ma, do 100 na żądanie.
 
 ## Wpis nie na Facebooka
 

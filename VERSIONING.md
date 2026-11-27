@@ -1,6 +1,6 @@
 # Versioning
 
-> The contract is a **draft** (`3.8.1-draft`) and may change until it is declared stable. No dates are promised.
+> The contract is a **draft** (`3.9.0-draft`) and may change until it is declared stable. No dates are promised.
 
 The version of the contract is `info.version` in the OpenAPI document and `contract_version` in `GET /v3/cms/status`. It follows semantic versioning:
 
@@ -12,3 +12,5 @@ The version of the contract is `info.version` in the OpenAPI document and `contr
 Ignoring what you do not know is part of the contract: schemas of what Tribune Desk sends do not forbid unknown properties, so do not generate a validator that does.
 
 Every change of the contract has an entry in the [CHANGELOG](CHANGELOG.md).
+
+Every version that reaches main gets a tag; a version overwritten in the docs sync PR before it was merged keeps only its CHANGELOG section, and its changes ship in the next tag (e.g. 3.6.1-draft is carried by v3.7.0-draft).
