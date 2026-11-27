@@ -1,4 +1,4 @@
-<!-- translated-from: README.md sha256:edac1acb210abc1c -->
+<!-- translated-from: README.md sha256:4e0245dfc788b3f8 -->
 # Tribune Desk CMS API: przewodnik integracji
 
 To API łączy system zarządzania treścią (CMS) z Tribune Desk, narzędziem redakcyjnym, które pisze artykuły. Twój CMS odbiera artykuły wysłane przez redaktorów, informuje Tribune Desk, gdzie zostały opublikowane, i może utrzymywać swoją bibliotekę mediów w synchronizacji. Klientem może być dowolny CMS; nic tutaj nie zakłada konkretnego produktu. Wtyczka Tribune Desk dla WordPress jest jedną z jego implementacji; nie potrzebujesz jej, żeby zbudować własną.
@@ -17,7 +17,9 @@ Każdy poziom działa bez wyższych. Zacznij od poziomu 1, który zajmuje dzień
 | [2. Link zwrotny](guide/2-link-back.md) | zgłasza adres i datę publikacji | `POST /v3/cms/articles/published` | link w Tribune Desk; artykuł staje się celem linków |
 | [3. Pełna treść](guide/3-full-content.md) | rozwiązuje linki wewnętrzne, zachowuje boks „Czytaj więcej”, SEO, autora, język, oznaczenie AI | pola poziomu 3 w dostawie | pełna jakość publikacji |
 | [4. Biblioteka mediów](guide/4-media-library.md) | synchronizuje pliki i ich opisy w obu kierunkach | trasy media, settings, held, resync i backfill | jedna biblioteka |
-| [5. Archiwum](guide/5-archive.md) | wysyła starsze artykuły | planowane | linki do archiwum |
+| [5. Archiwum](guide/5-archive.md) | wysyła starsze artykuły | jeszcze niedostępne: zapytaj swój kontakt w Tribune Desk | linki do archiwum |
+
+Gdy wybrane poziomy już działają, [Pełna integracja w dowolnym CMS](guide/complete-integration.md) opisuje, co dokłada wokół nich integracja produkcyjna: zadania w tle, filtr HTML, to, co każda nowa wysyłka zmienia we wpisie, oraz przypadki brzegowe zdjęć, linku zwrotnego i kategorii. To jest to, co robi wtyczka WordPress, opisane dla dowolnego CMS.
 
 Kontrakt opisuje [dokument OpenAPI](../openapi.json) (dostępny także pod `https://api.tribunedesk.com/v3/cms/openapi.json`). Jak zmieniają się wersje: [Wersjonowanie](VERSIONING.md). Co się zmieniło: [CHANGELOG](../CHANGELOG.md). Działający klienci w Pythonie: [poziom 1](../examples/python/level1_receiver.py) i [poziom 2](../examples/python/level2_link_back.py).
 
@@ -65,7 +67,7 @@ curl -sS https://api.tribunedesk.com/v3/cms/status \
 ```
 
 ```
-{"org_code":"example-org","contract_version":"3.8.1-draft","scopes":["media:read"],"state":"active", ...}
+{"org_code":"example-org","contract_version":"3.9.0-draft","scopes":["media:read"],"state":"active", ...}
 ```
 
 ## O co poprosić Tribune Desk

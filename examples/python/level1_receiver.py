@@ -20,13 +20,16 @@ import base64
 import binascii
 import hashlib
 import hmac
+import html
 import json
 import os
 import re
 import time
 from collections.abc import Mapping
 from datetime import UTC, datetime
+from html.parser import HTMLParser
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlsplit
 
 SECRET_PREFIX = "whsec_"
 TOLERANCE_SECONDS = 300  # reject requests more than 5 minutes away from our clock
@@ -102,20 +105,161 @@ def verify_signature(
     raise InvalidSignature("no signature matches")
 
 
-# Players whose embeds stay (guide 1, "The HTML body", Embeds). Each prefix ends with "/", so a
-# look-alike host such as www.youtube.com.example.net does not pass.
-TRUSTED_PLAYERS = ("https://www.youtube.com/embed/", "https://player.vimeo.com/video/")
-_SCRIPT = re.compile(r"<script\b([^>]*)>.*?</script>", re.S | re.I)
-_IFRAME = re.compile(r"<iframe\b[^>]*\bsrc=[\"']([^\"']*)[\"'][^>]*>.*?</iframe>", re.S | re.I)
+# Players whose embeds stay (guide "A complete integration", Filtering the HTML): exact host and
+# path prefix of the parsed `src`, so a look-alike host such as www.youtube.com.example.net and a
+# trusted address hidden in another attribute do not pass.
+TRUSTED_PLAYERS = {"www.youtube.com": "/embed/", "player.vimeo.com": "/video/"}
+_ALLOWED: dict[str, frozenset[str]] = {
+    **{t: frozenset() for t in ("p", "h2", "h3", "h4", "h5", "h6", "strong", "b", "em", "i", "u")},
+    **{t: frozenset() for t in ("br", "hr", "ul", "ol", "li", "blockquote", "figcaption")},
+    **{t: frozenset() for t in ("table", "thead", "tbody", "tfoot", "tr", "caption")},
+    "th": frozenset({"colspan", "rowspan"}),
+    "td": frozenset({"colspan", "rowspan"}),
+    "a": frozenset({"href", "target", "rel", "title"}),
+    "img": frozenset({"src", "alt", "width", "height"}),  # plus every data-td-* attribute
+    "figure": frozenset({"class"}),
+    "iframe": frozenset(
+        {"src", "width", "height", "frameborder", "allowfullscreen", "allow", "title"}
+    ),
+}
+_VOID = frozenset({"br", "hr", "img"})
+# Removed together with everything inside them; any other unknown tag loses only the tag.
+_DROP_WITH_CONTENT = frozenset(
+    {
+        "script",
+        "style",
+        "object",
+        "embed",
+        "form",
+        "svg",
+        "math",
+        "template",
+        "noscript",
+        "textarea",
+        "select",
+        "iframe",
+        "title",
+        "head",
+    }
+)
+_URL_ATTRS = frozenset({"href", "src"})
+_SAFE_SCHEMES = frozenset({"", "http", "https", "mailto"})
+_CONTROL = re.compile(r"[\x00-\x20\x7f]+")
 
 
-def filter_embeds(html: str) -> str:
-    """Drop every `script` with its content, except the AI label block, and every `iframe`
-    whose `src` is not a trusted player. Run it on every delivery: a delivery arrives with no
-    editor logged in, so a filter that depends on the current user's rights may treat it
-    differently from the editor's own posts."""
-    html = _SCRIPT.sub(lambda m: m.group(0) if "data-hf-provenance" in m.group(1) else "", html)
-    return _IFRAME.sub(lambda m: m.group(0) if m.group(1).startswith(TRUSTED_PLAYERS) else "", html)
+def safe_url(value: str) -> bool:
+    """True for a relative address, a `#` anchor, or `http`, `https` and `mailto`. Browsers drop
+    whitespace and control characters inside a scheme, so `java<TAB>script:` is checked as
+    `javascript:`; entities were already decoded by the parser."""
+    return urlsplit(_CONTROL.sub("", value)).scheme.lower() in _SAFE_SCHEMES
+
+
+def trusted_player(src: str) -> bool:
+    if any(c == chr(92) or c.isspace() or ord(c) < 32 for c in src):
+        return False  # a backslash or a space is read differently by browsers
+    parts = urlsplit(src)
+    host = parts.hostname or ""
+    prefix = TRUSTED_PLAYERS.get(host)
+    return (
+        parts.scheme == "https"
+        and parts.netloc.lower() == host  # no port, no user name
+        and prefix is not None
+        and parts.path.startswith(prefix)
+    )
+
+
+class _Sanitizer(HTMLParser):
+    """Allow-list filter on the standard library's HTML parser: what is not on `_ALLOWED` goes.
+    Text is escaped again on output, attributes are rebuilt from their decoded values."""
+
+    # Only `script` and `style` hold raw text here. Newer and patched versions of `html.parser`
+    # also read `iframe`, `textarea` and others as raw text; the filter parses their content as
+    # markup on every version and filters it like the rest of the body.
+    CDATA_CONTENT_ELEMENTS = ("script", "style")
+    RCDATA_CONTENT_ELEMENTS = ()
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.out: list[str] = []
+        self._skip: str | None = None  # tag whose content is being dropped
+        self._depth = 0
+        self._label = False  # inside the AI label block, kept as it is
+        self._players = 0  # kept iframes already closed on output, whose `</iframe>` is still due
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self._skip is not None:
+            self._depth += tag == self._skip
+            return
+        names = [n for n, _ in attrs]
+        if (
+            tag == "script"
+            and ("data-hf-provenance" in names)
+            and dict(attrs).get("type") == "application/ld+json"
+        ):
+            self._label = True
+            self.out.append('<script type="application/ld+json" data-hf-provenance>')
+            return
+        if tag == "iframe" and names.count("src") == 1 and trusted_player(dict(attrs)["src"] or ""):
+            # Closed at once, so a missing `</iframe>` does not swallow the rest of the body.
+            self.out.append(self._tag(tag, attrs) + "</iframe>")
+            self._players += 1
+            return
+        if tag in _DROP_WITH_CONTENT:
+            if tag not in _VOID:
+                self._skip, self._depth = tag, 1
+            return
+        if tag in _ALLOWED:
+            self.out.append(self._tag(tag, attrs))
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _VOID:
+            self.handle_starttag(tag, attrs)
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._skip is not None:
+            if tag == self._skip:
+                self._depth -= 1
+                if self._depth == 0:
+                    self._skip = None
+            return
+        if tag == "iframe" and self._players:
+            self._players -= 1  # already closed on output
+        elif tag == "script" and self._label:
+            self._label = False
+            self.out.append("</script>")
+        elif tag in _ALLOWED and tag not in _VOID and tag != "iframe":  # a stray `</iframe>` goes
+            self.out.append(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        if self._skip is None:
+            # The label is JSON from Tribune Desk; `<` is escaped so it cannot end the element.
+            self.out.append(
+                data.replace("<", "\\u003c") if self._label else html.escape(data, quote=False)
+            )
+
+    def _tag(self, tag: str, attrs: list[tuple[str, str | None]]) -> str:
+        allowed = _ALLOWED[tag]
+        kept = []
+        for name, value in attrs:
+            if name not in allowed and not (tag == "img" and name.startswith("data-td-")):
+                continue
+            if name in _URL_ATTRS and not safe_url(value or ""):
+                continue
+            kept.append(name if value is None else f'{name}="{html.escape(value, quote=True)}"')
+        return f"<{tag}{''.join(' ' + a for a in kept)}>"
+
+
+def filter_html(body: str) -> str:
+    """Filter `html` with an allow list (guide "A complete integration", Filtering the HTML):
+    no `on*` or `style` attributes, no `javascript:` or `data:` addresses, `script` and other
+    active elements removed with their content (the AI label block stays), embeds only from a
+    trusted player. Run it on every delivery: a delivery arrives with no editor logged in, so a
+    filter that depends on the current user's rights may treat it differently. In your own code
+    prefer a maintained sanitizer (for Python, `nh3`); this one shows what it must do."""
+    parser = _Sanitizer()
+    parser.feed(body)
+    parser.close()
+    return "".join(parser.out)
 
 
 def publication_state(post: dict, publication: object, now: int) -> tuple[str, str | None]:
@@ -174,7 +318,7 @@ def handle_delivery(
         "cms_post_id": post_id,
         "sent_at": sent_at,
         "title": article["title"],
-        "html": filter_embeds(article["html"]),
+        "html": filter_html(article["html"]),
         "excerpt": article.get("excerpt"),
         "featured_image_url": (article.get("featured_image") or {}).get("url"),
         # A scheduled post is published at `publish_at` by your CMS's own scheduler.

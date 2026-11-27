@@ -1,7 +1,7 @@
-<!-- translated-from: VERSIONING.md sha256:fa711277c059d39a -->
+<!-- translated-from: VERSIONING.md sha256:11465749e27bd266 -->
 # Wersjonowanie
 
-> Kontrakt jest **wersją roboczą** (`3.8.1-draft`) i może się zmieniać, dopóki nie zostanie ogłoszony jako stabilny. Nie obiecujemy żadnych dat.
+> Kontrakt jest **wersją roboczą** (`3.9.0-draft`) i może się zmieniać, dopóki nie zostanie ogłoszony jako stabilny. Nie obiecujemy żadnych dat.
 
 Wersja kontraktu to `info.version` w dokumencie OpenAPI i `contract_version` w `GET /v3/cms/status`. Jest zgodna z wersjonowaniem semantycznym:
 
@@ -13,3 +13,5 @@ Wersja kontraktu to `info.version` w dokumencie OpenAPI i `contract_version` w `
 Ignorowanie tego, czego nie znasz, jest częścią kontraktu: schematy tego, co wysyła Tribune Desk, nie zabraniają nieznanych właściwości, więc nie generuj walidatora, który ich zabrania.
 
 Każda zmiana kontraktu ma wpis w [CHANGELOG](../CHANGELOG.md).
+
+Każda wersja, która trafia na main, dostaje tag; wersja nadpisana w PR-ze synchronizacji dokumentacji, zanim został scalony, zachowuje tylko swoją sekcję w CHANGELOG, a jej zmiany wychodzą w następnym tagu (np. 3.6.1-draft niesie v3.7.0-draft).
