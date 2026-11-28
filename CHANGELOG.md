@@ -2,6 +2,14 @@
 
 Changes of the Tribune Desk CMS API contract, newest first. Versions follow [Versioning](VERSIONING.md).
 
+## 3.9.1-draft – 2026-11-28
+
+- A media library photo whose source address is on a host outside your `image_hosts` (a photo from Wikimedia Commons) is sent as a signed address of Tribune Desk's own copy, on a host that is in `image_hosts`: in `generated_images[].url` and in the `src` of `<img>` in `html`. The signed address works for 24 hours; every new send carries a fresh one. Before, the source address was sent, and an integration that checks `image_hosts` dropped the image. No shape changes.
+
+**Integrators:**
+
+- `L1`: download images at the time of the send, as the guide already asks; do not store a signed address as the image's lasting address.
+
 ## 3.9.0-draft – 2026-11-27
 
 - New chapter [A complete integration in any CMS](guide/complete-integration.md): what a production integration adds around the levels, written so that any CMS can match the WordPress plugin. The background jobs (image retries, link back retries, bulk and scheduled publishing, image hosts, the daily category run); a full HTML filter with unsafe and safe samples; what each new send changes in a new, a not yet public and a public post; publication dates and a site-side switch that keeps Tribune Desk from publishing; finding images before downloading them, time budgets, file names; the steps when a post becomes public; the send cycle of categories and tags; settings and the delivery log. Documentation only: no shape changes.
